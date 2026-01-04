@@ -97,3 +97,4 @@
 - aptos-labs/move-by-examples/nft-launchpad
 - Move security guidelines: https://aptos.dev/build/smart-contracts/move-security-guidelines
 - x402: https://github.com/coinbase/x402
+- privy + rn / expo: https://github.com/dumbdevss/Movement-react-native-privy-template
