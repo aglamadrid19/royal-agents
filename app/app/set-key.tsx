@@ -71,7 +71,7 @@ export default function SetKeyScreen() {
         nonce,
         provider,
         apiKey,
-        payoutAddress,
+        payoutAddress: payoutAddress || undefined,
         signatureFormat: "hash",
       });
       setStatus("Key stored. Now set key_status on-chain.");
@@ -124,7 +124,7 @@ export default function SetKeyScreen() {
           style={styles.input}
           autoCapitalize="none"
         />
-        <Text style={styles.label}>Payout Address (EVM)</Text>
+        <Text style={styles.label}>Payout Address (Movement, optional)</Text>
         <TextInput
           value={payoutAddress}
           onChangeText={setPayoutAddress}

@@ -14,13 +14,24 @@ const envSchema = z.object({
   X402_FACILITATOR_URL: z.string().min(1),
   X402_PAY_TO_ADDRESS: z.string().optional(),
   X402_ENABLED: z.string().optional(),
+  X402_ASSET: z.string().optional(),
+  X402_USD_PER_MOVE: z.string().optional(),
+  X402_MOVE_DECIMALS: z.string().optional(),
+  X402_MAX_TIMEOUT_SECONDS: z.string().optional(),
   OPENAI_DEFAULT_MODEL: z.string().optional(),
   ANTHROPIC_DEFAULT_MODEL: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional()
 });
 
-const isTest = process.env.NODE_ENV === \"test\";
+const isTest = process.env.NODE_ENV === "test";
 const env = (isTest ? envSchema.partial() : envSchema).parse(process.env);
+const toNumber = (value: string | undefined, fallback: number) => {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 export const config = {
   port: Number(env.PORT || 4020),
@@ -31,9 +42,13 @@ export const config = {
   apiKeyEncSecret: env.API_KEY_ENC_SECRET || "test-secret",
   x402: {
     enabled: env.X402_ENABLED !== "false",
-    network: env.X402_NETWORK || "eip155:84532",
-    facilitatorUrl: env.X402_FACILITATOR_URL || "http://localhost:4020",
-    payToAddress: env.X402_PAY_TO_ADDRESS || ""
+    network: env.X402_NETWORK || "movement",
+    facilitatorUrl: env.X402_FACILITATOR_URL || "https://facilitator.stableyard.fi",
+    payToAddress: env.X402_PAY_TO_ADDRESS || "",
+    asset: env.X402_ASSET || "0x1::aptos_coin::AptosCoin",
+    usdPerMove: toNumber(env.X402_USD_PER_MOVE, 1),
+    moveDecimals: toNumber(env.X402_MOVE_DECIMALS, 8),
+    maxTimeoutSeconds: toNumber(env.X402_MAX_TIMEOUT_SECONDS, 600)
   },
   ai: {
     openaiModel: env.OPENAI_DEFAULT_MODEL || "gpt-4o-mini",

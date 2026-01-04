@@ -14,7 +14,6 @@ import { ChainClient } from "./chain";
 import { buildPaymentMiddleware } from "./x402";
 
 const addressRegex = /^0x[a-fA-F0-9]{1,64}$/;
-const evmAddressRegex = /^0x[a-fA-F0-9]{40}$/;
 
 function normalizeAddress(address: string) {
   return address.toLowerCase();
@@ -54,7 +53,7 @@ export function createApp(options: {
   const walletLimiter = rateLimit({
     windowMs: 60_000,
     max: 20,
-    keyGenerator: req => (req.body?.address ? String(req.body.address) : req.ip),
+    keyGenerator: req => (req.body?.address ? String(req.body.address) : req.ip ?? ""),
   });
 
   app.use(ipLimiter);
@@ -115,7 +114,7 @@ export function createApp(options: {
         signature_format: z.enum(["message", "hash"]).optional(),
         provider: z.enum(["openai", "anthropic"]),
         api_key: z.string().min(1),
-        payout_address: z.string().regex(evmAddressRegex),
+        payout_address: z.string().regex(addressRegex).optional(),
       });
       const parsed = schema.parse(req.body);
       const agentId = Number(req.params.id);
@@ -152,7 +151,7 @@ export function createApp(options: {
         iv: encrypted.iv,
         tag: encrypted.tag,
         provider: parsed.provider,
-        payout_address: parsed.payout_address,
+        payout_address: parsed.payout_address ?? "",
       });
 
       res.json({ status: "ok" });

@@ -45,6 +45,15 @@ npm install
 npm run dev
 ```
 
+x402 (Movement) settings to fill in `.env`:
+- `X402_NETWORK=movement`
+- `X402_FACILITATOR_URL=https://facilitator.stableyard.fi`
+- `X402_ASSET=0x1::aptos_coin::AptosCoin`
+- `X402_PAY_TO_ADDRESS=0x<movement address>` (fallback only for non-Movement networks)
+- `X402_USD_PER_MOVE=1` (conversion rate used to map USD cents to MOVE amount)
+- `X402_MOVE_DECIMALS=8` (decimals for the asset; Aptos/MOVE defaults to 8)
+- `X402_MAX_TIMEOUT_SECONDS=600` (max time the facilitator will accept the payment)
+
 ## 3) Movement Expo backend
 ```bash
 cd expo-backend

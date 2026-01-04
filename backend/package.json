@@ -12,9 +12,6 @@
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^1.25.0",
-    "@x402/core": "^2.1.0",
-    "@x402/evm": "^2.1.0",
-    "@x402/express": "^2.1.0",
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -24,6 +21,7 @@
     "pino": "^9.3.2",
     "pino-http": "^9.0.0",
     "tweetnacl": "^1.0.3",
+    "x402plus": "^0.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

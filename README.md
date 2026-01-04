@@ -6,7 +6,7 @@
 - MVP that is secure-by-default and production-quality
 - NFT ownership controls usage revenue
 - No platform-held API keys and no admin controls
-- Pay-per-request via x402 with on-chain usage records
+- Pay-per-request via x402 (Movement/x402plus) with on-chain usage records
 
 ## High-level components
 1) Move contracts (Movement testnet)
@@ -14,7 +14,7 @@
    - Marketplace: listing and purchase of Agent NFTs
    - FeeManager: protocol fee and usage recording
 2) Backend service (Node.js + Express)
-   - Verifies x402 payments
+   - Verifies x402 payments (Movement facilitator via x402plus)
    - Reads agent state + owner from chain
    - Stores encrypted owner API keys in SQLite
    - Calls AI provider using owner key
@@ -32,7 +32,7 @@
 - Agent NFT fields (on-chain):
   - agent_id (u64)
   - metadata_uri (string)
-  - usage_fee (u64, USD cents for x402 pricing)
+  - usage_fee (u64, USD cents for x402 pricing; converted to MOVE via `X402_USD_PER_MOVE`)
   - owner (address)
   - paused (bool)
   - key_status (KEY_SET | KEY_MISSING)
@@ -56,7 +56,7 @@
 4) New owner must set a new API key; key_status is set to KEY_MISSING after sale
 
 ### Use agent (pay-per-request)
-1) User creates x402 payment for the agent fee
+1) User creates x402 payment for the agent fee (MOVE amount derived from USD cents)
 2) User creates X25519 ephemeral keypair and sends public key
 3) Backend verifies x402 payment
 4) Backend reads agent state and owner from chain
@@ -97,4 +97,5 @@
 - aptos-labs/move-by-examples/nft-launchpad
 - Move security guidelines: https://aptos.dev/build/smart-contracts/move-security-guidelines
 - x402: https://github.com/coinbase/x402
+- movement-x402: https://github.com/Rahat-ch/movement-x402
 - privy + rn / expo: https://github.com/dumbdevss/Movement-react-native-privy-template

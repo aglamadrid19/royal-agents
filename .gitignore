@@ -1,2 +1,4 @@
 move/build
 .env
+node_modules
+royal_agents.db*

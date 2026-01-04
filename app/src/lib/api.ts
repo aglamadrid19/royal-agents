@@ -40,22 +40,25 @@ export async function setAgentKey(params: {
   nonce: string;
   provider: "openai" | "anthropic";
   apiKey: string;
-  payoutAddress: string;
+  payoutAddress?: string;
   signatureFormat?: "message" | "hash";
 }) {
+  const body: Record<string, unknown> = {
+    address: params.address,
+    public_key: params.publicKey,
+    signature: params.signature,
+    nonce: params.nonce,
+    provider: params.provider,
+    api_key: params.apiKey,
+    signature_format: params.signatureFormat,
+  };
+  if (params.payoutAddress) {
+    body.payout_address = params.payoutAddress;
+  }
   const res = await fetch(`${baseUrl}/agents/${params.agentId}/key`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      address: params.address,
-      public_key: params.publicKey,
-      signature: params.signature,
-      nonce: params.nonce,
-      provider: params.provider,
-      api_key: params.apiKey,
-      payout_address: params.payoutAddress,
-      signature_format: params.signatureFormat,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     throw new Error(await res.text());

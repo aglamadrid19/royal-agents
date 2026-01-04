@@ -3,7 +3,7 @@
 ## Prereqs
 - Move package deployed and initialized (see docs/DEPLOYMENT.md)
 - Backend running with `.env` configured
-- EVM wallet for x402 payments (Base Sepolia)
+- Movement wallet for x402 payments
 - Movement CLI installed (commands use `movement`; replace with `aptos` if needed)
 
 ## 1) Mint agent NFT (owner)
@@ -33,10 +33,10 @@ curl -s -X POST http://localhost:4020/agents/0/key \
     "signature":"<hex>",
     "nonce":"<nonce>",
     "provider":"openai",
-    "api_key":"sk-...",
-    "payout_address":"0xEVM_PAYOUT"
+    "api_key":"sk-..."
   }'
 ```
+`payout_address` is optional for Movement x402; if omitted, payments go to the agent owner address.
 Set key status on-chain:
 ```bash
 movement move run \
@@ -63,37 +63,54 @@ After purchase, key_status is KEY_MISSING.
 Repeat step 2 with the new owner address, then call `set_key_status`.
 
 ## 6) User pays per request (x402) and uses agent
-Use the x402 fetch client to pay and call the API:
+Use the x402plus Movement signer to pay and call the API:
 ```bash
 # from a separate node project
-npm install @x402/fetch @x402/evm viem dotenv
+npm install x402plus @aptos-labs/ts-sdk dotenv
 
 cat > x402-call.js <<'JS'
 import { config } from 'dotenv';
-import { x402Client, wrapFetchWithPayment } from '@x402/fetch';
-import { registerExactEvmScheme } from '@x402/evm/exact/client';
-import { privateKeyToAccount } from 'viem/accounts';
+import { wrapFetchWithPayment, aptosLikeSigner } from 'x402plus';
+import { Aptos, AptosConfig, Account, Ed25519PrivateKey } from '@aptos-labs/ts-sdk';
 config();
 
-const client = new x402Client();
-registerExactEvmScheme(client, { signer: privateKeyToAccount(process.env.EVM_PRIVATE_KEY) });
+const rpc = process.env.MOVEMENT_RPC_URL || 'https://testnet.movementnetwork.xyz/v1';
+const aptos = new Aptos(new AptosConfig({ fullnode: rpc }));
+const account = Account.fromPrivateKey({
+  privateKey: new Ed25519PrivateKey(process.env.MOVEMENT_PRIVATE_KEY)
+});
 
-const fetchWithPayment = wrapFetchWithPayment(fetch, client);
+const signer = aptosLikeSigner(async (accepts) => {
+  const tx = await aptos.transaction.build.simple({
+    sender: account.accountAddress,
+    data: {
+      function: '0x1::aptos_account::transfer',
+      functionArguments: [accepts.payTo, accepts.maxAmountRequired]
+    }
+  });
+  const authenticator = aptos.transaction.sign({ signer: account, transaction: tx });
+  return {
+    signatureBcsBase64: Buffer.from(authenticator.bcsToBytes()).toString('base64'),
+    transactionBcsBase64: Buffer.from(tx.bcsToBytes()).toString('base64')
+  };
+});
+
+const fetchWithPayment = wrapFetchWithPayment(fetch, { signer, prefer: 'exact' });
 const res = await fetchWithPayment('http://localhost:4020/agents/0/use', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     prompt: 'Summarize the agent capabilities.',
     client_public_key: '<base64 X25519 public key>',
-    payer_address: '0xUSER'
+    payer_address: account.accountAddress.toString()
   })
 });
 console.log(await res.json());
 JS
 
-EVM_PRIVATE_KEY=0x... node x402-call.js
+MOVEMENT_PRIVATE_KEY=ed25519-priv-... node x402-call.js
 ```
 
 ## 7) Verify owner revenue
-- x402 payment is sent to the payout address
+- x402 payment is sent to the Movement payout address
 - Backend records usage on-chain via FeeManager
