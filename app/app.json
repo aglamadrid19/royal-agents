@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "RoyalAgents",
+    "slug": "royal-agents",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "royalagents",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "usesAppleSignIn": true,
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.royalagents.app",
+      "associatedDomains": ["webcredentials:<your-associated-domain>"],
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "dev.royalagents.app"
+    },
+    "extra": {
+      "privyAppId": "<APP_ID>",
+      "privyClientId": "<CLIENT_ID>",
+      "passkeyAssociatedDomain": "https://<your-associated-domain>",
+      "backendUrl": "http://localhost:4020",
+      "movementBackendUrl": "http://localhost:3000",
+      "movePackageAddress": "0xYOUR_PACKAGE_ADDRESS"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.5"
+          },
+          "android": {
+            "compileSdkVersion": 35
+          }
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

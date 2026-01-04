@@ -1,0 +1,38 @@
+{
+  "name": "expo-backend",
+  "version": "1.0.0",
+  "description": "Backend server for Expo app integrating Aptos SDK and Privy for transaction signing",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "lint": "eslint .",
+    "test": "echo \"No tests configured\""
+  },
+  "keywords": [
+    "express",
+    "aptos",
+    "sdk",
+    "privy",
+    "expo",
+    "movement"
+  ],
+  "author": "RoyalAgents",
+  "license": "MIT",
+  "dependencies": {
+    "@aptos-labs/ts-sdk": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
+    "viem": "^2.38.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.12.0",
+    "nodemon": "^3.1.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,11 @@
+[package]
+name = "royal_agents"
+version = "0.0.1"
+
+[addresses]
+royal_agents = "0xA"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/movementlabsxyz/movement-aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
+AptosStdlib = { git = "https://github.com/movementlabsxyz/movement-aptos-core.git", subdir = "aptos-move/framework/aptos-stdlib", rev = "main" }
+AptosTokenObjects = { git = "https://github.com/movementlabsxyz/movement-aptos-core.git", subdir = "aptos-move/framework/aptos-token-objects", rev = "main" }
