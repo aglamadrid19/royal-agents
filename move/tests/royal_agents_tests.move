@@ -18,19 +18,17 @@ module royal_agents::royal_agents_tests {
 
         let alice = account::create_account_for_test(@0xB);
         let metadata = string::utf8(b"ipfs://agent-metadata");
-        let agent_id = agent_nft::mint_agent(&alice, metadata, 100);
+        agent_nft::mint_agent(&alice, metadata, 100);
+        let agent_id = agent_nft::agent_count() - 1;
 
-        let agent = agent_nft::get_agent(agent_id);
-        assert!(agent.owner == signer::address_of(&alice), 100);
-        assert!(agent.key_status == agent_nft::KEY_MISSING, 101);
+        assert!(agent_nft::owner_of(agent_id) == signer::address_of(&alice), 100);
+        assert!(agent_nft::key_status(agent_id) == agent_nft::key_missing(), 101);
 
         agent_nft::update_usage_fee(&alice, agent_id, 200);
-        let updated = agent_nft::get_agent(agent_id);
-        assert!(updated.usage_fee == 200, 102);
+        assert!(agent_nft::usage_fee(agent_id) == 200, 102);
 
         agent_nft::pause(&alice, agent_id, true);
-        let paused = agent_nft::get_agent(agent_id);
-        assert!(paused.paused, 103);
+        assert!(agent_nft::is_paused(agent_id), 103);
     }
 
     #[test]
@@ -42,7 +40,8 @@ module royal_agents::royal_agents_tests {
 
         let alice = account::create_account_for_test(@0xB);
         let metadata = string::utf8(b"ipfs://agent-metadata");
-        let agent_id = agent_nft::mint_agent(&alice, metadata, 100);
+        agent_nft::mint_agent(&alice, metadata, 100);
+        let agent_id = agent_nft::agent_count() - 1;
         marketplace::list(&alice, agent_id, 1_000);
     }
 
@@ -53,7 +52,7 @@ module royal_agents::royal_agents_tests {
         marketplace::init(&admin);
 
         let aptos_framework = account::create_account_for_test(@aptos_framework);
-        let (_, mint_cap) = aptos_coin::initialize_for_test(&aptos_framework);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&aptos_framework);
 
         let alice = account::create_account_for_test(@0xB);
         let bob = account::create_account_for_test(@0xC);
@@ -62,15 +61,18 @@ module royal_agents::royal_agents_tests {
         coin::deposit<AptosCoin>(signer::address_of(&bob), coin::mint(2_000, &mint_cap));
 
         let metadata = string::utf8(b"ipfs://agent-metadata");
-        let agent_id = agent_nft::mint_agent(&alice, metadata, 100);
-        agent_nft::set_key_status(&alice, agent_id, agent_nft::KEY_SET);
+        agent_nft::mint_agent(&alice, metadata, 100);
+        let agent_id = agent_nft::agent_count() - 1;
+        agent_nft::set_key_status(&alice, agent_id, agent_nft::key_set());
 
         marketplace::list(&alice, agent_id, 1_000);
         marketplace::buy(&bob, agent_id);
 
-        let agent = agent_nft::get_agent(agent_id);
-        assert!(agent.owner == signer::address_of(&bob), 200);
-        assert!(agent.key_status == agent_nft::KEY_MISSING, 201);
+        assert!(agent_nft::owner_of(agent_id) == signer::address_of(&bob), 200);
+        assert!(agent_nft::key_status(agent_id) == agent_nft::key_missing(), 201);
+
+        coin::destroy_mint_cap(mint_cap);
+        coin::destroy_burn_cap(burn_cap);
     }
 
     #[test]

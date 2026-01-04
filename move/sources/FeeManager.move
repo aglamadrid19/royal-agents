@@ -1,6 +1,7 @@
 module royal_agents::fee_manager {
     use std::signer;
     use aptos_std::table::{Self, Table};
+    use aptos_framework::account;
     use aptos_framework::event;
 
     const E_NOT_INITIALIZED: u64 = 1;
@@ -34,7 +35,7 @@ module royal_agents::fee_manager {
         move_to(admin, UsageStore { usage: table::new() });
         move_to(
             admin,
-            UsageEvents { usage_recorded: event::new_event_handle<UsageRecorded>(admin) },
+            UsageEvents { usage_recorded: account::new_event_handle<UsageRecorded>(admin) },
         );
         move_to(admin, UsageCap {});
     }
@@ -50,7 +51,7 @@ module royal_agents::fee_manager {
         payer: address,
         amount: u64,
         request_hash: u128,
-    ) acquires UsageStore, UsageEvents, UsageCap {
+    ) acquires UsageStore, UsageEvents {
         assert!(exists<UsageStore>(@royal_agents), E_NOT_INITIALIZED);
         assert!(exists<UsageCap>(signer::address_of(authorized)), E_NOT_AUTHORIZED);
         let store = borrow_global_mut<UsageStore>(@royal_agents);

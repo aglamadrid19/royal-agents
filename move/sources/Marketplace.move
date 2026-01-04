@@ -2,6 +2,7 @@ module royal_agents::marketplace {
     use std::signer;
 
     use aptos_std::table::{Self, Table};
+    use aptos_framework::account;
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin;
     use aptos_framework::event;
@@ -68,9 +69,9 @@ module royal_agents::marketplace {
         move_to(
             admin,
             ListingEvents {
-                listed: event::new_event_handle<Listed>(admin),
-                delisted: event::new_event_handle<Delisted>(admin),
-                sold: event::new_event_handle<Sold>(admin),
+                listed: account::new_event_handle<Listed>(admin),
+                delisted: account::new_event_handle<Delisted>(admin),
+                sold: account::new_event_handle<Sold>(admin),
             },
         );
     }
@@ -78,7 +79,7 @@ module royal_agents::marketplace {
     public entry fun list(owner: &signer, agent_id: u64, price: u64)
     acquires ListingStore, ListingEvents {
         assert!(exists<ListingStore>(@royal_agents), E_NOT_INITIALIZED);
-        assert!(agent_nft::key_status(agent_id) == agent_nft::KEY_SET, E_KEY_MISSING);
+        assert!(agent_nft::key_status(agent_id) == agent_nft::key_set(), E_KEY_MISSING);
 
         let store = borrow_global_mut<ListingStore>(@royal_agents);
         assert!(!table::contains(&store.listings, agent_id), E_ALREADY_LISTED);
@@ -102,10 +103,11 @@ module royal_agents::marketplace {
         assert!(table::contains(&store.listings, agent_id), E_NOT_LISTED);
 
         let listing = table::remove(&mut store.listings, agent_id);
+        let Listing { agent_id, seller: listing_seller, price: _, cap } = listing;
         let seller = signer::address_of(owner);
-        assert!(listing.seller == seller, E_NOT_SELLER);
+        assert!(listing_seller == seller, E_NOT_SELLER);
 
-        agent_nft::return_transfer_cap(owner, listing.cap);
+        agent_nft::return_transfer_cap(owner, cap);
 
         let events = borrow_global_mut<ListingEvents>(@royal_agents);
         event::emit_event(&mut events.delisted, Delisted { agent_id, seller });
@@ -114,26 +116,27 @@ module royal_agents::marketplace {
     public entry fun buy(buyer: &signer, agent_id: u64)
     acquires ListingStore, ListingEvents {
         assert!(exists<ListingStore>(@royal_agents), E_NOT_INITIALIZED);
-        assert!(agent_nft::key_status(agent_id) == agent_nft::KEY_SET, E_KEY_MISSING);
+        assert!(agent_nft::key_status(agent_id) == agent_nft::key_set(), E_KEY_MISSING);
 
         let store = borrow_global_mut<ListingStore>(@royal_agents);
         assert!(table::contains(&store.listings, agent_id), E_NOT_LISTED);
 
         let listing = table::remove(&mut store.listings, agent_id);
+        let Listing { agent_id, seller, price, cap } = listing;
         let current_owner = agent_nft::owner_of(agent_id);
-        assert!(listing.seller == current_owner, E_NOT_OWNER);
+        assert!(seller == current_owner, E_NOT_OWNER);
 
-        coin::transfer<AptosCoin>(buyer, listing.seller, listing.price);
-        agent_nft::transfer_with_cap(listing.cap, buyer);
+        coin::transfer<AptosCoin>(buyer, seller, price);
+        agent_nft::transfer_with_cap(cap, buyer);
 
         let events = borrow_global_mut<ListingEvents>(@royal_agents);
         event::emit_event(
             &mut events.sold,
             Sold {
                 agent_id,
-                seller: listing.seller,
+                seller,
                 buyer: signer::address_of(buyer),
-                price: listing.price,
+                price,
             },
         );
     }

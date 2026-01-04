@@ -1,9 +1,11 @@
 module royal_agents::agent_nft {
-    use std::option::{Self, Option};
+    friend royal_agents::marketplace;
+    use std::option::Self;
     use std::signer;
     use std::string::{Self, String};
 
     use aptos_std::table::{Self, Table};
+    use aptos_framework::account;
     use aptos_framework::event;
     use aptos_framework::object;
 
@@ -18,8 +20,8 @@ module royal_agents::agent_nft {
     const E_NOT_AUTHORIZED: u64 = 6;
     const E_ALREADY_INITIALIZED: u64 = 7;
 
-    public const KEY_MISSING: u8 = 0;
-    public const KEY_SET: u8 = 1;
+    const KEY_MISSING: u8 = 0;
+    const KEY_SET: u8 = 1;
 
     const COLLECTION_URI_BYTES: vector<u8> = b"https://royalagents.example/collection";
 
@@ -96,15 +98,15 @@ module royal_agents::agent_nft {
         move_to(
             admin,
             AgentEvents {
-                minted: event::new_event_handle<AgentMinted>(admin),
-                fee_updated: event::new_event_handle<FeeUpdated>(admin),
-                paused: event::new_event_handle<Paused>(admin),
-                key_status_changed: event::new_event_handle<KeyStatusChanged>(admin),
+                minted: account::new_event_handle<AgentMinted>(admin),
+                fee_updated: account::new_event_handle<FeeUpdated>(admin),
+                paused: account::new_event_handle<Paused>(admin),
+                key_status_changed: account::new_event_handle<KeyStatusChanged>(admin),
             },
         );
     }
 
-    public entry fun mint_agent(creator: &signer, metadata_uri: String, usage_fee: u64): u64
+    public entry fun mint_agent(creator: &signer, metadata_uri: String, usage_fee: u64)
     acquires AgentRegistry, AgentEvents, OwnerCaps {
         assert!(exists<AgentRegistry>(@royal_agents), E_NOT_INITIALIZED);
         let registry = borrow_global_mut<AgentRegistry>(@royal_agents);
@@ -117,7 +119,7 @@ module royal_agents::agent_nft {
         let description = string::utf8(b"RoyalAgents agent");
         let name_prefix = string::utf8(b"RoyalAgent #");
         let name_suffix = string::utf8(b"");
-        let token_uri = string::clone(&metadata_uri);
+        let token_uri = *&metadata_uri;
         let constructor_ref = token::create_numbered_token(
             creator,
             collection_name(),
@@ -153,13 +155,12 @@ module royal_agents::agent_nft {
             &mut events.minted,
             AgentMinted { agent_id, owner: owner_addr, token_address },
         );
-        agent_id
     }
 
     public entry fun update_usage_fee(owner: &signer, agent_id: u64, new_fee: u64)
     acquires AgentRegistry, AgentEvents, OwnerCaps, Agent {
         assert_owner_with_cap(owner, agent_id);
-        let agent = borrow_agent_mut(agent_id);
+        let agent = borrow_global_mut<Agent>(agent_address(agent_id));
         agent.usage_fee = new_fee;
 
         let events = borrow_global_mut<AgentEvents>(@royal_agents);
@@ -169,7 +170,7 @@ module royal_agents::agent_nft {
     public entry fun pause(owner: &signer, agent_id: u64, pause: bool)
     acquires AgentRegistry, AgentEvents, OwnerCaps, Agent {
         assert_owner_with_cap(owner, agent_id);
-        let agent = borrow_agent_mut(agent_id);
+        let agent = borrow_global_mut<Agent>(agent_address(agent_id));
         agent.paused = pause;
 
         let events = borrow_global_mut<AgentEvents>(@royal_agents);
@@ -180,7 +181,7 @@ module royal_agents::agent_nft {
     acquires AgentRegistry, AgentEvents, OwnerCaps, Agent {
         assert_owner_with_cap(owner, agent_id);
         assert!(key_status == KEY_SET || key_status == KEY_MISSING, E_KEY_STATUS_INVALID);
-        let agent = borrow_agent_mut(agent_id);
+        let agent = borrow_global_mut<Agent>(agent_address(agent_id));
         agent.key_status = key_status;
 
         let events = borrow_global_mut<AgentEvents>(@royal_agents);
@@ -196,7 +197,7 @@ module royal_agents::agent_nft {
         let agent = borrow_global<Agent>(token_address);
         AgentView {
             agent_id,
-            metadata_uri: string::clone(&agent.metadata_uri),
+            metadata_uri: *&agent.metadata_uri,
             usage_fee: agent.usage_fee,
             owner: agent.owner,
             paused: agent.paused,
@@ -213,19 +214,41 @@ module royal_agents::agent_nft {
 
     #[view]
     public fun owner_of(agent_id: u64): address acquires AgentRegistry, Agent {
-        let agent = borrow_agent(agent_id);
+        let agent = borrow_global<Agent>(agent_address(agent_id));
         agent.owner
     }
 
     #[view]
+    public fun usage_fee(agent_id: u64): u64 acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        agent.usage_fee
+    }
+
+    #[view]
+    public fun metadata_uri(agent_id: u64): String acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        *&agent.metadata_uri
+    }
+
+    #[view]
     public fun key_status(agent_id: u64): u8 acquires AgentRegistry, Agent {
-        let agent = borrow_agent(agent_id);
+        let agent = borrow_global<Agent>(agent_address(agent_id));
         agent.key_status
     }
 
     #[view]
+    public fun key_missing(): u8 {
+        KEY_MISSING
+    }
+
+    #[view]
+    public fun key_set(): u8 {
+        KEY_SET
+    }
+
+    #[view]
     public fun is_paused(agent_id: u64): bool acquires AgentRegistry, Agent {
-        let agent = borrow_agent(agent_id);
+        let agent = borrow_global<Agent>(agent_address(agent_id));
         agent.paused
     }
 
@@ -258,7 +281,7 @@ module royal_agents::agent_nft {
     fun ensure_collection(creator: &signer, owner_addr: address) {
         let name = collection_name();
         let collection_addr = collection::create_collection_address(&owner_addr, &name);
-        if (!exists<collection::Collection>(collection_addr)) {
+        if (!object::object_exists<collection::Collection>(collection_addr)) {
             let description = string::utf8(b"RoyalAgents collection");
             let uri = string::utf8(COLLECTION_URI_BYTES);
             collection::create_unlimited_collection(
@@ -281,16 +304,6 @@ module royal_agents::agent_nft {
         *table::borrow(&registry.agents, agent_id)
     }
 
-    fun borrow_agent(agent_id: u64): &Agent acquires AgentRegistry, Agent {
-        let token_address = agent_address(agent_id);
-        borrow_global<Agent>(token_address)
-    }
-
-    fun borrow_agent_mut(agent_id: u64): &mut Agent acquires AgentRegistry, Agent {
-        let token_address = agent_address(agent_id);
-        borrow_global_mut<Agent>(token_address)
-    }
-
     fun add_cap(owner: &signer, agent_id: u64, cap: AgentTransferCap) acquires OwnerCaps {
         let owner_addr = signer::address_of(owner);
         if (!exists<OwnerCaps>(owner_addr)) {
@@ -303,7 +316,7 @@ module royal_agents::agent_nft {
     fun assert_owner_with_cap(owner: &signer, agent_id: u64)
     acquires OwnerCaps, AgentRegistry, Agent {
         let owner_addr = signer::address_of(owner);
-        let agent = borrow_agent(agent_id);
+        let agent = borrow_global<Agent>(agent_address(agent_id));
         assert!(agent.owner == owner_addr, E_NOT_OWNER);
         assert!(has_cap(owner_addr, agent_id), E_CAP_MISSING);
     }

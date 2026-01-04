@@ -9,6 +9,8 @@
 All Move commands below use `movement`. If you use Aptos CLI, replace `movement` with `aptos`.
 
 ## 1) Move package
+
+Compiles the package and runs the Move unit tests
 ```bash
 cd move
 movement move test
@@ -16,7 +18,22 @@ movement move test
 
 To build/package for Movement testnet:
 ```bash
-movement move compile --save-metadata --named-addresses royal_agents=0xYOUR_ACCOUNT
+movement move compile --save-metadata --named-addresses royal_agents=0xDEPLOYER
+```
+
+To deploy package for Movement testnet:
+```bash
+movement move publish --named-addresses royal_agents=0xDEPLOYER
+```
+
+Initialize on-chain state, these entry functions once, using the deployer signer:
+```bash
+movement move run \
+  --function-id 0xDEPLOYER::agent_nft::init
+movement move run \
+  --function-id 0xDEPLOYER::marketplace::init
+movement move run \
+  --function-id 0xDEPLOYER::fee_manager::init
 ```
 
 ## 2) Backend
