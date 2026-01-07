@@ -1,4 +1,9 @@
 move/build
 .env
-node_modules
-royal_agents.db*
+app/node_modules
+expo-backend/node_modules
+backend/node_modules
+backend/royal_agents.db*
+app/android
+app/ios
+app/.expo

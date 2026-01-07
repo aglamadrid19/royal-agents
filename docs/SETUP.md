@@ -62,6 +62,7 @@ cp .env.example .env
 npm install
 npm run start
 ```
+The network (testnet vs mainnet) is controlled by `MOVEMENT_FULLNODE_URL` in `expo-backend/.env`.
 
 ## 4) App (Expo)
 ```bash
@@ -70,6 +71,10 @@ npm install
 # set privyAppId, privyClientId, backendUrl, movementBackendUrl, movePackageAddress in app.json
 npm run start
 ```
+If you run on a device/emulator, `movementBackendUrl` must be reachable:
+- Android emulator: `http://10.0.2.2:3000`
+- Physical device: `http://<your LAN IP>:3000`
+Note: @privy-io/expo pulls `expo-apple-authentication` and `react-native-passkeys` as peer dependencies, which add iOS entitlements that require code signing even on the simulator. This repo includes a local config plugin (`app/plugins/strip-ios-entitlements.js`) to strip those entitlements for simulator builds. Remove that plugin when you want Apple Sign-In or passkeys in production.
 
 Privy dashboard checklist:
 - Add App Identifiers: `host.exp.Exponent` and your bundle id

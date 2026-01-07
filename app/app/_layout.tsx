@@ -27,7 +27,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ title: "RoyalAgents" }} />
-        <Stack.Screen name="agents" options={{ title: "Agents" }} />
+        <Stack.Screen name="agents/index" options={{ title: "Agents" }} />
         <Stack.Screen name="agents/[id]" options={{ title: "Agent Detail" }} />
         <Stack.Screen name="use-agent" options={{ title: "Use Agent" }} />
         <Stack.Screen name="my-agents" options={{ title: "My Agents" }} />

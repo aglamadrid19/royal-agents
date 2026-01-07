@@ -116,8 +116,10 @@ app.post("/submit-transaction", async (req, res) => {
       vmStatus: executedTxn.vm_status,
     });
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to submit signed transaction";
     console.error("Error submitting signed transaction:", error);
-    res.status(500).json({ error: "Failed to submit signed transaction" });
+    res.status(500).json({ error: message });
   }
 });
 

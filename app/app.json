@@ -13,10 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "usesAppleSignIn": true,
       "supportsTablet": true,
       "bundleIdentifier": "dev.royalagents.app",
-      "associatedDomains": ["webcredentials:<your-associated-domain>"],
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -31,17 +29,15 @@
       "package": "dev.royalagents.app"
     },
     "extra": {
-      "privyAppId": "<APP_ID>",
-      "privyClientId": "<CLIENT_ID>",
-      "passkeyAssociatedDomain": "https://<your-associated-domain>",
-      "backendUrl": "http://localhost:4020",
-      "movementBackendUrl": "http://localhost:3000",
-      "movePackageAddress": "0xYOUR_PACKAGE_ADDRESS"
+      "privyAppId": "cmjmztc9n00ctld0c2he2owwn",
+      "privyClientId": "client-WY6UFs6MfaSSSmoF4XVApJVao3CSNpzyrCTx9ioF6mRzx",
+      "backendUrl": "http://10.0.0.29:4020",
+      "movementBackendUrl": "http://10.0.0.29:3000",
+      "movePackageAddress": "0xc4cb8896f9137aabcd312c5c67959e5b93610c954d0ededda2025bbb125a838d"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-apple-authentication",
       [
         "expo-build-properties",
         {
@@ -54,7 +50,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/strip-ios-entitlements"
     ],
     "experiments": {
       "typedRoutes": true

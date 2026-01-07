@@ -51,7 +51,17 @@ export function useMovementWallet() {
       });
 
       if (!submitResponse.ok) {
-        throw new Error("Failed to submit signed transaction");
+        const errorText = await submitResponse.text();
+        let message = "Failed to submit signed transaction";
+        if (errorText) {
+          try {
+            const parsed = JSON.parse(errorText);
+            message = parsed.error || message;
+          } catch {
+            message = errorText;
+          }
+        }
+        throw new Error(message);
       }
 
       const result = await submitResponse.json();
