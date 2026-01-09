@@ -3,18 +3,21 @@
 This document defines the two agent types required for the POC and how they fit the current MVP architecture. We will implement **Type 1** first and keep **Type 2** as a planned follow-up.
 
 ## Shared constraints (MVP)
-- Public metadata is **non-secret** and suitable for IPFS.
+- On-chain metadata is authoritative and stored directly in the Agent NFT.
 - Secret behavior (system prompts, tool configs, provider details) is **server-side only** and encrypted in the backend.
-- On-chain fields are fixed by the Agent NFT and **do not** depend on metadata contents.
+- Config is immutable after mint; `config_hash` is used to prove backend config matches chain state.
 - The backend enforces agent availability (paused / key missing) before use.
 
 ## Metadata usage
-`metadata_uri` is used for UI/UX discovery only. It should include:
-- `name`, `description`, `image`, `external_url`
-- `attributes`: `agent_type`, `provider`, `capabilities`, `version`, `tags`
-- Optional: `config_hash` (hash of the private config stored off-chain)
+On-chain fields required at mint:
+- `name`
+- `description`
+- `model`
+- `provider` (u8 enum)
+- `config_hash` (32-byte SHA-256)
+- `metadata_uri` (optional pointer for images/branding, can be empty string)
 
-**Never** include secrets in metadata (system prompts, tool policies, API keys).
+`metadata_uri` is UI-only; it must never include secrets.
 
 ---
 
@@ -23,26 +26,28 @@ This document defines the two agent types required for the POC and how they fit 
 ### Goal
 An agent that uses the owner-provided xAI API key and a private system prompt to perform verified scientific research responses.
 
-### Public metadata (example fields)
-- `agent_type`: `scientific_research`
-- `provider`: `xai`
-- `capabilities`: `literature_search`, `citations`, `structured_summary`
-- `tags`: `science`, `research`, `citations`
+### On-chain metadata (Type 1)
+- `name` / `description`
+- `model` (e.g., `grok-4-1-fast-reasoning`)
+- `provider` = `xai` (enum value `1`)
+- `config_hash` = SHA-256 of canonical config
+- `metadata_uri` (optional image/branding)
 
 ### Private config (backend-only, encrypted)
 - `system_prompt` (full workflow + policies)
-- `model` (e.g., `grok-4-1-fast-reasoning`)
 - `temperature`, `max_tokens`, provider-specific flags
 - Optional tool policies (if/when tools are added)
 
 ### Why this is safe
 The differentiation is in the private prompt + tool policy. Exposing metadata does not leak the agent’s internal behavior.
+Config hash does not include the API key, so ownership transfers do not require a new config.
 
 ### Implementation scope for Type 1
 - Add xAI provider support (request/response format)
 - Store private config per agent (encrypted at rest)
 - Wire config into provider call path
 - Keep public metadata minimal and non-sensitive
+- Validate config hash against chain before every request
 
 ---
 
@@ -58,11 +63,12 @@ This requires a pipeline beyond simple chat completion:
 - Asset storage for binary outputs
 - Optional conversion to `.ai` (often requires licensed Adobe tooling)
 
-### Public metadata (example fields)
-- `agent_type`: `logo_designer`
-- `provider`: `self_hosted`
-- `capabilities`: `logo_concepts`, `svg_export`, `brand_variations`
-- `tags`: `design`, `branding`, `vector`
+### On-chain metadata (Type 2)
+- `name` / `description`
+- `model` (self-hosted model ID or workflow ID)
+- `provider` = `self_hosted` (enum value TBD)
+- `config_hash` for the workflow config
+- `metadata_uri` (sample images or brand)
 
 ### Private config (backend-only, encrypted)
 - Model endpoint or MCP tooling endpoints

@@ -8,9 +8,9 @@ import {
   AptosConfig,
   Network,
   AccountAddress,
-  AccountAuthenticatorEd25519,
   Ed25519PublicKey,
   Ed25519Signature,
+  AccountAuthenticatorEd25519,
   generateSigningMessageForTransaction,
   SimpleTransaction,
   Hex,
@@ -109,17 +109,75 @@ app.post("/submit-transaction", async (req, res) => {
     const executedTxn = await aptos.waitForTransaction({
       transactionHash: pendingTxn.hash,
     });
+    let events = executedTxn.events || [];
+    if (!events.length) {
+      const txn = await aptos.getTransactionByHash({ transactionHash: pendingTxn.hash });
+      events = txn.events || [];
+    }
+    const mintedEvent = events.find(event =>
+      String(event.type || "").endsWith("::agent_nft::AgentMinted")
+    );
+    const mintedAgentId = mintedEvent?.data?.agent_id;
 
     res.json({
       success: executedTxn.success,
       transactionHash: executedTxn.hash,
       vmStatus: executedTxn.vm_status,
+      agentId: mintedAgentId ? Number(mintedAgentId) : undefined,
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to submit signed transaction";
     console.error("Error submitting signed transaction:", error);
     res.status(500).json({ error: message });
+  }
+});
+
+app.post("/x402/payment-header", async (req, res) => {
+  const { accepts, publicKey, signature, rawTxnHex } = req.body;
+  if (!accepts || !publicKey || !signature || !rawTxnHex) {
+    return res.status(400).json({ error: "Missing accepts, publicKey, signature, or rawTxnHex" });
+  }
+
+  let processedPublicKey = publicKey;
+  if (processedPublicKey.toLowerCase().startsWith("0x")) {
+    processedPublicKey = processedPublicKey.slice(2);
+  }
+  if (processedPublicKey.length === 66 && processedPublicKey.startsWith("00")) {
+    processedPublicKey = processedPublicKey.substring(2);
+  }
+  if (processedPublicKey.length !== 64) {
+    return res.status(400).json({
+      error: `Invalid public key length: expected 64 characters, got ${processedPublicKey.length}`,
+    });
+  }
+
+  try {
+    const authenticator = new AccountAuthenticatorEd25519(
+      new Ed25519PublicKey(processedPublicKey),
+      new Ed25519Signature(signature)
+    );
+    const signatureBcsBase64 = Buffer.from(authenticator.bcsToBytes()).toString("base64");
+
+    const txnHex = rawTxnHex.startsWith("0x") ? rawTxnHex.slice(2) : rawTxnHex;
+    const transactionBcsBase64 = Buffer.from(txnHex, "hex").toString("base64");
+
+    const header = {
+      x402Version: 1,
+      scheme: accepts.scheme,
+      network: accepts.network,
+      payload: {
+        signature: signatureBcsBase64,
+        transaction: transactionBcsBase64,
+      },
+    };
+    const xPayment = Buffer.from(JSON.stringify(header)).toString("base64");
+    return res.json({ x_payment: xPayment });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to build x402 payment header";
+    console.error("Error building x402 payment header:", error);
+    return res.status(500).json({ error: message });
   }
 });
 

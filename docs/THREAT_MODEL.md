@@ -42,24 +42,29 @@
 - On-chain agent availability enforced (paused/key_status)
 - Usage recorded on-chain with request hash to detect duplicates
 
-### T5: Listing or buying without key set
+### T5: Config mismatch or tampering
+- `config_hash` stored on-chain and immutable after mint
+- Backend recomputes hash from stored config before every use
+- Config is encrypted at rest in SQLite
+
+### T6: Listing or buying without key set
 - Marketplace checks key_status == KEY_SET on-chain
 - Backend re-checks key_status before use
 
-### T6: Replay or double-spend of usage
+### T7: Replay or double-spend of usage
 - Record usage with request_hash
 - Backend stores usage_receipts with unique request_hash
 - FeeManager rejects duplicates by request_hash
 
-### T7: Malicious prompts or injection
+### T8: Malicious prompts or injection
 - Strict prompt templating and separation of system/user
 - Provider key never included in prompt
 
-### T8: Compromised client device
+### T9: Compromised client device
 - User is responsible for device security
 - No recovery of decrypted results if device is compromised
 
-### T9: Movement expo-backend misbehavior
+### T10: Movement expo-backend misbehavior
 - Treat expo-backend as untrusted; responses are validated by the chain
 - Signatures are produced by the wallet; backend cannot forge user signatures
 

@@ -12,7 +12,10 @@ export function issueNonce(db: Db, address: string) {
 }
 
 export function deriveAddressFromPublicKey(publicKeyHex: string): string {
-  const keyHex = publicKeyHex.startsWith("0x") ? publicKeyHex.slice(2) : publicKeyHex;
+  let keyHex = publicKeyHex.startsWith("0x") ? publicKeyHex.slice(2) : publicKeyHex;
+  if (keyHex.length === 66 && keyHex.startsWith("00")) {
+    keyHex = keyHex.slice(2);
+  }
   const pubkey = Buffer.from(keyHex, "hex");
   const authKey = crypto
     .createHash("sha3-256")
@@ -43,7 +46,11 @@ export function verifySignedNonce(
       ? crypto.createHash("sha256").update(message).digest()
       : message;
   const signatureBytes = Buffer.from(signature.startsWith("0x") ? signature.slice(2) : signature, "hex");
-  const publicKeyBytes = Buffer.from(publicKey.startsWith("0x") ? publicKey.slice(2) : publicKey, "hex");
+  let publicKeyHex = publicKey.startsWith("0x") ? publicKey.slice(2) : publicKey;
+  if (publicKeyHex.length === 66 && publicKeyHex.startsWith("00")) {
+    publicKeyHex = publicKeyHex.slice(2);
+  }
+  const publicKeyBytes = Buffer.from(publicKeyHex, "hex");
   const valid = nacl.sign.detached.verify(payload, signatureBytes, publicKeyBytes);
   if (!valid) {
     return false;

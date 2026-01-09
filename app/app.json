@@ -33,7 +33,7 @@
       "privyClientId": "client-WY6UFs6MfaSSSmoF4XVApJVao3CSNpzyrCTx9ioF6mRzx",
       "backendUrl": "http://10.0.0.29:4020",
       "movementBackendUrl": "http://10.0.0.29:3000",
-      "movePackageAddress": "0xc4cb8896f9137aabcd312c5c67959e5b93610c954d0ededda2025bbb125a838d"
+      "movePackageAddress": "0x724d559517363aeeeccd0a7018960a10aa8d346fb0a332dd4be53b3da5937540"
     },
     "plugins": [
       "expo-router",

@@ -38,7 +38,7 @@ export async function setAgentKey(params: {
   publicKey: string;
   signature: string;
   nonce: string;
-  provider: "openai" | "anthropic";
+  provider: "openai" | "anthropic" | "xai";
   apiKey: string;
   payoutAddress?: string;
   signatureFormat?: "message" | "hash";
@@ -59,6 +59,37 @@ export async function setAgentKey(params: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function setAgentConfig(params: {
+  agentId: number;
+  address: string;
+  publicKey: string;
+  signature: string;
+  nonce: string;
+  systemPrompt: string;
+  temperature: number;
+  maxTokens: number;
+  signatureFormat?: "message" | "hash";
+}) {
+  const res = await fetch(`${baseUrl}/agents/${params.agentId}/config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      address: params.address,
+      public_key: params.publicKey,
+      signature: params.signature,
+      nonce: params.nonce,
+      signature_format: params.signatureFormat,
+      system_prompt: params.systemPrompt,
+      temperature: params.temperature,
+      max_tokens: params.maxTokens,
+    }),
   });
   if (!res.ok) {
     throw new Error(await res.text());

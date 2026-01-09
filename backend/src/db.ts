@@ -22,6 +22,16 @@ export type UsageReceipt = {
   created_at: string;
 };
 
+export type AgentConfigRecord = {
+  agent_id: number;
+  config_hash: string;
+  encrypted_config: string;
+  iv: string;
+  tag: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export function initDb(path: string): Db {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
@@ -44,6 +54,15 @@ export function initDb(path: string): Db {
       amount INTEGER NOT NULL,
       request_hash TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS agent_configs (
+      agent_id INTEGER PRIMARY KEY,
+      config_hash TEXT NOT NULL,
+      encrypted_config TEXT NOT NULL,
+      iv TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS nonces (
       address TEXT NOT NULL,
@@ -107,6 +126,31 @@ export function insertUsageReceipt(db: Db, receipt: Omit<UsageReceipt, "created_
     receipt.payer_address,
     receipt.amount,
     receipt.request_hash,
+    now
+  );
+}
+
+export function getAgentConfig(db: Db, agentId: number): AgentConfigRecord | undefined {
+  const stmt = db.prepare("SELECT * FROM agent_configs WHERE agent_id = ?");
+  return stmt.get(agentId) as AgentConfigRecord | undefined;
+}
+
+export function insertAgentConfig(db: Db, record: Omit<AgentConfigRecord, "created_at" | "updated_at">) {
+  const existing = getAgentConfig(db, record.agent_id);
+  if (existing) {
+    throw new Error("config_already_set");
+  }
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO agent_configs (agent_id, config_hash, encrypted_config, iv, tag, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    record.agent_id,
+    record.config_hash,
+    record.encrypted_config,
+    record.iv,
+    record.tag,
+    now,
     now
   );
 }

@@ -4,6 +4,11 @@ import { config as appConfig } from "./config";
 export type AgentOnChain = {
   agent_id: number;
   metadata_uri: string;
+  name: string;
+  description: string;
+  model: string;
+  provider: number;
+  config_hash: string;
   usage_fee: number;
   owner: string;
   paused: boolean;
@@ -36,9 +41,15 @@ export class ChainClient {
       },
     });
     const agent = result[0] as any;
+    const configHash = normalizeConfigHash(agent.config_hash);
     return {
       agent_id: Number(agent.agent_id),
       metadata_uri: String(agent.metadata_uri),
+      name: String(agent.name),
+      description: String(agent.description),
+      model: String(agent.model),
+      provider: Number(agent.provider),
+      config_hash: configHash,
       usage_fee: Number(agent.usage_fee),
       owner: String(agent.owner),
       paused: Boolean(agent.paused),
@@ -82,4 +93,25 @@ export class ChainClient {
     });
     await this.aptos.waitForTransaction({ transactionHash: pending.hash });
   }
+}
+
+function normalizeConfigHash(raw: unknown): string {
+  if (Array.isArray(raw)) {
+    return Buffer.from(raw).toString("hex");
+  }
+  if (typeof raw === "string") {
+    return raw.startsWith("0x") ? raw.slice(2).toLowerCase() : raw.toLowerCase();
+  }
+  if (raw && typeof raw === "object") {
+    const value = raw as { vec?: number[]; bytes?: string };
+    if (Array.isArray(value.vec)) {
+      return Buffer.from(value.vec).toString("hex");
+    }
+    if (typeof value.bytes === "string") {
+      return value.bytes.startsWith("0x")
+        ? value.bytes.slice(2).toLowerCase()
+        : value.bytes.toLowerCase();
+    }
+  }
+  return "";
 }

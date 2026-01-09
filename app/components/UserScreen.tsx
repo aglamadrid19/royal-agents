@@ -329,6 +329,9 @@ export const MovementWalletPortfolio = () => {
             <Text style={styles.royalAgentsSubtitle}>
               Browse, configure, and use AI agents from your Movement wallet.
             </Text>
+            <Link href="/create-agent" style={styles.royalAgentsLink}>
+              Create Agent (Type 1)
+            </Link>
             <Link href="/agents" style={styles.royalAgentsLink}>
               Browse Agents
             </Link>

@@ -42,7 +42,9 @@ export default function MyAgentsScreen() {
         ) : null}
         {agents.map(agent => (
           <Link key={`my-agent-${agent.agent_id}`} href={`/agents/${agent.agent_id}`} style={styles.card}>
-            <Text style={styles.cardTitle}>Agent #{agent.agent_id}</Text>
+            <Text style={styles.cardTitle}>
+              {agent.name ? `${agent.name} (#${agent.agent_id})` : `Agent #${agent.agent_id}`}
+            </Text>
             <Text style={styles.meta}>Fee (cents): {agent.usage_fee}</Text>
           </Link>
         ))}

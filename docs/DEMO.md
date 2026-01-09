@@ -7,14 +7,71 @@
 - Movement CLI installed (commands use `movement`; replace with `aptos` if needed)
 
 ## 1) Mint agent NFT (owner)
+Define the Type 1 config and compute `config_hash` (SHA-256 of the canonical string):
+```bash
+node - <<'JS'
+const crypto = require("crypto");
+const config = {
+  provider: "xai",
+  model: "grok-4-1-fast-reasoning",
+  system_prompt: "You are SciGrok, a specialized scientific researcher.",
+  temperature: 0.2,
+  max_tokens: 512
+};
+const canonical = [
+  "version=1",
+  `provider=${config.provider}`,
+  `model=${config.model}`,
+  `system_prompt=${config.system_prompt}`,
+  `temperature=${config.temperature}`,
+  `max_tokens=${Math.trunc(config.max_tokens)}`
+].join("\\n");
+const hash = crypto.createHash("sha256").update(canonical, "utf8").digest("hex");
+console.log("config_hash =", hash);
+JS
+```
+
+Mint the agent with on-chain metadata and the computed `config_hash`:
 ```bash
 movement move run \
   --function-id 0xDEPLOYER::agent_nft::mint_agent \
-  --args string:ipfs://agent-metadata u64:100
+  --args string:ipfs://agent-metadata \
+         string:"SciGrok" \
+         string:"Scientific researcher agent" \
+         string:"grok-4-1-fast-reasoning" \
+         u8:1 \
+         hex:<config_hash_hex> \
+         u64:100
 ```
+Use `string:""` for `metadata_uri` if you do not want an external pointer.
+Provider enum: `1 = xai`, `2 = openai`, `3 = anthropic`.
 Output: `agent_id` from events.
 
-## 2) Owner sets key (off-chain) + key status (on-chain)
+## 2) Owner stores config (off-chain, encrypted)
+Request nonce:
+```bash
+curl -s -X POST http://localhost:4020/auth/nonce \
+  -H 'Content-Type: application/json' \
+  -d '{"address":"0xOWNER"}'
+```
+Sign the message `RoyalAgents nonce: <nonce>` with the owner wallet.
+
+Submit config (must match the on-chain `config_hash`):
+```bash
+curl -s -X POST http://localhost:4020/agents/0/config \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "address":"0xOWNER",
+    "public_key":"<hex>",
+    "signature":"<hex>",
+    "nonce":"<nonce>",
+    "system_prompt":"You are SciGrok, a specialized scientific researcher.",
+    "temperature":0.2,
+    "max_tokens":512
+  }'
+```
+
+## 3) Owner sets key (off-chain) + key status (on-chain)
 Request nonce:
 ```bash
 curl -s -X POST http://localhost:4020/auth/nonce \
@@ -32,7 +89,7 @@ curl -s -X POST http://localhost:4020/agents/0/key \
     "public_key":"<hex>",
     "signature":"<hex>",
     "nonce":"<nonce>",
-    "provider":"openai",
+    "provider":"xai",
     "api_key":"sk-..."
   }'
 ```
@@ -44,14 +101,14 @@ movement move run \
   --args u64:0 u8:1
 ```
 
-## 3) List agent
+## 4) List agent
 ```bash
 movement move run \
   --function-id 0xDEPLOYER::marketplace::list \
   --args u64:0 u64:100000000
 ```
 
-## 4) Buy agent (buyer)
+## 5) Buy agent (buyer)
 ```bash
 movement move run \
   --function-id 0xDEPLOYER::marketplace::buy \
@@ -59,10 +116,10 @@ movement move run \
 ```
 After purchase, key_status is KEY_MISSING.
 
-## 5) New owner sets key
-Repeat step 2 with the new owner address, then call `set_key_status`.
+## 6) New owner sets key
+Repeat step 3 with the new owner address, then call `set_key_status`.
 
-## 6) User pays per request (x402) and uses agent
+## 7) User pays per request (x402) and uses agent
 Use the x402plus Movement signer to pay and call the API:
 ```bash
 # from a separate node project
@@ -111,6 +168,6 @@ JS
 MOVEMENT_PRIVATE_KEY=ed25519-priv-... node x402-call.js
 ```
 
-## 7) Verify owner revenue
+## 8) Verify owner revenue
 - x402 payment is sent to the Movement payout address
 - Backend records usage on-chain via FeeManager

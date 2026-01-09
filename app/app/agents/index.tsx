@@ -39,8 +39,14 @@ export default function AgentsScreen() {
             href={`/agents/${agent.agent_id}`}
             style={styles.card}
           >
-            <Text style={styles.cardTitle}>Agent #{agent.agent_id}</Text>
+            <Text style={styles.cardTitle}>
+              {agent.name ? `${agent.name} (#${agent.agent_id})` : `Agent #${agent.agent_id}`}
+            </Text>
+            {agent.description ? (
+              <Text style={styles.meta}>{agent.description}</Text>
+            ) : null}
             <Text style={styles.meta}>Owner: {agent.owner}</Text>
+            <Text style={styles.meta}>Model: {agent.model}</Text>
             <Text style={styles.meta}>Fee (cents): {agent.usage_fee}</Text>
             <Text style={styles.meta}>Paused: {String(agent.paused)}</Text>
             <Text style={styles.meta}>Key status: {agent.key_status}</Text>

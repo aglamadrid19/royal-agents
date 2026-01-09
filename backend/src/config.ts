@@ -42,7 +42,7 @@ export const config = {
   apiKeyEncSecret: env.API_KEY_ENC_SECRET || "test-secret",
   x402: {
     enabled: env.X402_ENABLED !== "false",
-    network: env.X402_NETWORK || "movement",
+    network: env.X402_NETWORK || "movement-testnet",
     facilitatorUrl: env.X402_FACILITATOR_URL || "https://facilitator.stableyard.fi",
     payToAddress: env.X402_PAY_TO_ADDRESS || "",
     asset: env.X402_ASSET || "0x1::aptos_coin::AptosCoin",

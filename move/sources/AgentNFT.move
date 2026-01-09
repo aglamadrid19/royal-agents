@@ -3,6 +3,7 @@ module royal_agents::agent_nft {
     use std::option::Self;
     use std::signer;
     use std::string::{Self, String};
+    use std::vector;
 
     use aptos_std::table::{Self, Table};
     use aptos_framework::account;
@@ -19,9 +20,15 @@ module royal_agents::agent_nft {
     const E_CAP_MISSING: u64 = 5;
     const E_NOT_AUTHORIZED: u64 = 6;
     const E_ALREADY_INITIALIZED: u64 = 7;
+    const E_INVALID_PROVIDER: u64 = 8;
+    const E_INVALID_CONFIG_HASH: u64 = 9;
 
     const KEY_MISSING: u8 = 0;
     const KEY_SET: u8 = 1;
+    const PROVIDER_XAI: u8 = 1;
+    const PROVIDER_OPENAI: u8 = 2;
+    const PROVIDER_ANTHROPIC: u8 = 3;
+    const CONFIG_HASH_LEN: u64 = 32;
 
     const COLLECTION_URI_BYTES: vector<u8> = b"https://royalagents.example/collection";
 
@@ -29,6 +36,11 @@ module royal_agents::agent_nft {
     struct Agent has key {
         agent_id: u64,
         metadata_uri: String,
+        name: String,
+        description: String,
+        model: String,
+        provider: u8,
+        config_hash: vector<u8>,
         usage_fee: u64,
         owner: address,
         paused: bool,
@@ -84,6 +96,11 @@ module royal_agents::agent_nft {
     struct AgentView has drop, store {
         agent_id: u64,
         metadata_uri: String,
+        name: String,
+        description: String,
+        model: String,
+        provider: u8,
+        config_hash: vector<u8>,
         usage_fee: u64,
         owner: address,
         paused: bool,
@@ -106,9 +123,23 @@ module royal_agents::agent_nft {
         );
     }
 
-    public entry fun mint_agent(creator: &signer, metadata_uri: String, usage_fee: u64)
+    public entry fun mint_agent(
+        creator: &signer,
+        metadata_uri: String,
+        name: String,
+        description: String,
+        model: String,
+        provider: u8,
+        config_hash: vector<u8>,
+        usage_fee: u64
+    )
     acquires AgentRegistry, AgentEvents, OwnerCaps {
         assert!(exists<AgentRegistry>(@royal_agents), E_NOT_INITIALIZED);
+        assert!(
+            provider == PROVIDER_XAI || provider == PROVIDER_OPENAI || provider == PROVIDER_ANTHROPIC,
+            E_INVALID_PROVIDER
+        );
+        assert!(vector::length(&config_hash) == CONFIG_HASH_LEN, E_INVALID_CONFIG_HASH);
         let registry = borrow_global_mut<AgentRegistry>(@royal_agents);
         let agent_id = registry.next_id;
         registry.next_id = agent_id + 1;
@@ -116,14 +147,14 @@ module royal_agents::agent_nft {
         let owner_addr = signer::address_of(creator);
         ensure_collection(creator, owner_addr);
 
-        let description = string::utf8(b"RoyalAgents agent");
-        let name_prefix = string::utf8(b"RoyalAgent #");
+        let token_description = *&description;
+        let name_prefix = *&name;
         let name_suffix = string::utf8(b"");
         let token_uri = *&metadata_uri;
         let constructor_ref = token::create_numbered_token(
             creator,
             collection_name(),
-            description,
+            token_description,
             name_prefix,
             name_suffix,
             option::none(),
@@ -137,6 +168,11 @@ module royal_agents::agent_nft {
             Agent {
                 agent_id,
                 metadata_uri,
+                name,
+                description,
+                model,
+                provider,
+                config_hash,
                 usage_fee,
                 owner: owner_addr,
                 paused: false,
@@ -198,6 +234,11 @@ module royal_agents::agent_nft {
         AgentView {
             agent_id,
             metadata_uri: *&agent.metadata_uri,
+            name: *&agent.name,
+            description: *&agent.description,
+            model: *&agent.model,
+            provider: agent.provider,
+            config_hash: *&agent.config_hash,
             usage_fee: agent.usage_fee,
             owner: agent.owner,
             paused: agent.paused,
@@ -228,6 +269,51 @@ module royal_agents::agent_nft {
     public fun metadata_uri(agent_id: u64): String acquires AgentRegistry, Agent {
         let agent = borrow_global<Agent>(agent_address(agent_id));
         *&agent.metadata_uri
+    }
+
+    #[view]
+    public fun name(agent_id: u64): String acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        *&agent.name
+    }
+
+    #[view]
+    public fun description(agent_id: u64): String acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        *&agent.description
+    }
+
+    #[view]
+    public fun model(agent_id: u64): String acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        *&agent.model
+    }
+
+    #[view]
+    public fun provider(agent_id: u64): u8 acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        agent.provider
+    }
+
+    #[view]
+    public fun config_hash(agent_id: u64): vector<u8> acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        *&agent.config_hash
+    }
+
+    #[view]
+    public fun provider_xai(): u8 {
+        PROVIDER_XAI
+    }
+
+    #[view]
+    public fun provider_openai(): u8 {
+        PROVIDER_OPENAI
+    }
+
+    #[view]
+    public fun provider_anthropic(): u8 {
+        PROVIDER_ANTHROPIC
     }
 
     #[view]

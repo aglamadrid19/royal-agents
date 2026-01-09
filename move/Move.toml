@@ -6,7 +6,7 @@ version = "0.0.1"
 royal_agents = "_"
 
 [dev-addresses]
-royal_agents = "0xA"
+royal_agents = "0xBEEF"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/movementlabsxyz/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "movement" }

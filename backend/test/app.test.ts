@@ -10,6 +10,11 @@ const stubChain = {
     return {
       agent_id: agentId,
       metadata_uri: "ipfs://agent",
+      name: "SciGrok",
+      description: "Scientific researcher agent",
+      model: "grok-4-1-fast-reasoning",
+      provider: 1,
+      config_hash: "00".repeat(32),
       usage_fee: 100,
       owner: "0x" + "a".repeat(64),
       paused: false,

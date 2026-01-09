@@ -1,6 +1,7 @@
 module royal_agents::royal_agents_tests {
     use std::signer;
     use std::string;
+    use std::vector;
 
     use aptos_framework::account;
     use aptos_framework::aptos_coin;
@@ -11,6 +12,16 @@ module royal_agents::royal_agents_tests {
     use royal_agents::fee_manager;
     use royal_agents::marketplace;
 
+    fun sample_hash(): vector<u8> {
+        let bytes = vector::empty<u8>();
+        let i = 0;
+        while (i < 32) {
+            vector::push_back(&mut bytes, 1);
+            i = i + 1;
+        };
+        bytes
+    }
+
     #[test]
     fun test_mint_and_update() {
         let admin = account::create_account_for_test(@royal_agents);
@@ -18,7 +29,12 @@ module royal_agents::royal_agents_tests {
 
         let alice = account::create_account_for_test(@0xB);
         let metadata = string::utf8(b"ipfs://agent-metadata");
-        agent_nft::mint_agent(&alice, metadata, 100);
+        let name = string::utf8(b"SciGrok");
+        let description = string::utf8(b"Scientific researcher agent");
+        let model = string::utf8(b"grok-4-1-fast-reasoning");
+        let provider = agent_nft::provider_xai();
+        let config_hash = sample_hash();
+        agent_nft::mint_agent(&alice, metadata, name, description, model, provider, config_hash, 100);
         let agent_id = agent_nft::agent_count() - 1;
 
         assert!(agent_nft::owner_of(agent_id) == signer::address_of(&alice), 100);
@@ -40,7 +56,12 @@ module royal_agents::royal_agents_tests {
 
         let alice = account::create_account_for_test(@0xB);
         let metadata = string::utf8(b"ipfs://agent-metadata");
-        agent_nft::mint_agent(&alice, metadata, 100);
+        let name = string::utf8(b"SciGrok");
+        let description = string::utf8(b"Scientific researcher agent");
+        let model = string::utf8(b"grok-4-1-fast-reasoning");
+        let provider = agent_nft::provider_xai();
+        let config_hash = sample_hash();
+        agent_nft::mint_agent(&alice, metadata, name, description, model, provider, config_hash, 100);
         let agent_id = agent_nft::agent_count() - 1;
         marketplace::list(&alice, agent_id, 1_000);
     }
@@ -61,7 +82,12 @@ module royal_agents::royal_agents_tests {
         coin::deposit<AptosCoin>(signer::address_of(&bob), coin::mint(2_000, &mint_cap));
 
         let metadata = string::utf8(b"ipfs://agent-metadata");
-        agent_nft::mint_agent(&alice, metadata, 100);
+        let name = string::utf8(b"SciGrok");
+        let description = string::utf8(b"Scientific researcher agent");
+        let model = string::utf8(b"grok-4-1-fast-reasoning");
+        let provider = agent_nft::provider_xai();
+        let config_hash = sample_hash();
+        agent_nft::mint_agent(&alice, metadata, name, description, model, provider, config_hash, 100);
         let agent_id = agent_nft::agent_count() - 1;
         agent_nft::set_key_status(&alice, agent_id, agent_nft::key_set());
 

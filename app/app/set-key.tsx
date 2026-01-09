@@ -9,22 +9,31 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Constants from "expo-constants";
 import { requestNonce, setAgentKey } from "@/src/lib/api";
 import { useMovementAccount } from "@/hooks/useMovementAccount";
+import { useMovementWallet } from "@/hooks/useMovement";
 import { useSignRawHash } from "@privy-io/expo/extended-chains";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex } from "@noble/hashes/utils";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 export default function SetKeyScreen() {
+  const params = useLocalSearchParams();
+  const router = useRouter();
   const { activeWallet, isCreatingWallet } = useMovementAccount();
+  const { signAndSubmitTransaction } = useMovementWallet();
   const { signRawHash } = useSignRawHash();
-  const [agentId, setAgentId] = useState("");
-  const [provider, setProvider] = useState<"openai" | "anthropic">("openai");
+  const [agentId, setAgentId] = useState(String(params.agentId || ""));
+  const [provider, setProvider] = useState<"openai" | "anthropic" | "xai">("xai");
   const [apiKey, setApiKey] = useState("");
   const [payoutAddress, setPayoutAddress] = useState("");
   const [nonce, setNonce] = useState("");
   const [loading, setLoading] = useState(false);
+  const [settingStatus, setSettingStatus] = useState(false);
+  const [keyStored, setKeyStored] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const packageAddress = (Constants.expoConfig?.extra?.movePackageAddress as string) || "";
 
   const request = async () => {
     setLoading(true);
@@ -74,11 +83,45 @@ export default function SetKeyScreen() {
         payoutAddress: payoutAddress || undefined,
         signatureFormat: "hash",
       });
+      setKeyStored(true);
       setStatus("Key stored. Now set key_status on-chain.");
     } catch (err: any) {
       setStatus(err.message || "Failed to set key");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const setKeyStatusOnChain = async () => {
+    setSettingStatus(true);
+    setStatus(null);
+    try {
+      if (!activeWallet) {
+        setStatus("Connect your Movement wallet first.");
+        return;
+      }
+      if (!packageAddress) {
+        setStatus("Missing movePackageAddress in app.json.");
+        return;
+      }
+      const parsedAgentId = Number(agentId);
+      if (!Number.isFinite(parsedAgentId)) {
+        setStatus("Enter a valid agent ID.");
+        return;
+      }
+      await signAndSubmitTransaction(
+        activeWallet.public_key,
+        activeWallet.address,
+        `${packageAddress}::agent_nft::set_key_status`,
+        [],
+        [parsedAgentId, 1]
+      );
+      setStatus("Key status set to KEY_SET on-chain.");
+      router.push(`/agents/${parsedAgentId}`);
+    } catch (err: any) {
+      setStatus(err.message || "Failed to set key status");
+    } finally {
+      setSettingStatus(false);
     }
   };
 
@@ -115,6 +158,12 @@ export default function SetKeyScreen() {
           >
             <Text style={styles.toggleText}>Anthropic</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggle, provider === "xai" && styles.toggleActive]}
+            onPress={() => setProvider("xai")}
+          >
+            <Text style={styles.toggleText}>xAI</Text>
+          </TouchableOpacity>
         </View>
         <Text style={styles.label}>API Key</Text>
         <TextInput
@@ -143,6 +192,19 @@ export default function SetKeyScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryButton} onPress={submit} disabled={loading}>
           <Text style={styles.secondaryButtonText}>Submit Key</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={setKeyStatusOnChain}
+          disabled={settingStatus}
+        >
+          {settingStatus ? (
+            <ActivityIndicator color="#7dd3fc" />
+          ) : (
+            <Text style={styles.secondaryButtonText}>
+              {keyStored ? "Set Key Status On-Chain" : "Set Key Status (after key)"}
+            </Text>
+          )}
         </TouchableOpacity>
         {status ? <Text style={styles.status}>{status}</Text> : null}
       </ScrollView>

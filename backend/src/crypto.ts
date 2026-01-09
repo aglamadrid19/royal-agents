@@ -2,6 +2,7 @@ import crypto from "crypto";
 import nacl from "tweetnacl";
 
 const OWNER_INFO = Buffer.from("royalagents-owner-key", "utf8");
+const CONFIG_INFO = Buffer.from("royalagents-agent-config", "utf8");
 const RESPONSE_INFO = Buffer.from("royalagents-response", "utf8");
 
 function parseSecret(raw: string): Buffer {
@@ -21,6 +22,12 @@ export function deriveOwnerKey(secret: string, ownerAddress: string, agentId: nu
   return Buffer.from(key);
 }
 
+export function deriveConfigKey(secret: string, agentId: number): Buffer {
+  const salt = Buffer.from(`agent:${agentId}`, "utf8");
+  const key = crypto.hkdfSync("sha256", parseSecret(secret), salt, CONFIG_INFO, 32);
+  return Buffer.from(key);
+}
+
 export function encryptOwnerKey(plaintext: string, key: Buffer) {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
@@ -34,6 +41,28 @@ export function encryptOwnerKey(plaintext: string, key: Buffer) {
 }
 
 export function decryptOwnerKey(ciphertext: string, iv: string, tag: string, key: Buffer) {
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
+  decipher.setAuthTag(Buffer.from(tag, "base64"));
+  const plaintext = Buffer.concat([
+    decipher.update(Buffer.from(ciphertext, "base64")),
+    decipher.final(),
+  ]);
+  return plaintext.toString("utf8");
+}
+
+export function encryptAgentConfig(plaintext: string, key: Buffer) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return {
+    ciphertext: ciphertext.toString("base64"),
+    iv: iv.toString("base64"),
+    tag: tag.toString("base64"),
+  };
+}
+
+export function decryptAgentConfig(ciphertext: string, iv: string, tag: string, key: Buffer) {
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
   decipher.setAuthTag(Buffer.from(tag, "base64"));
   const plaintext = Buffer.concat([

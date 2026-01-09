@@ -31,7 +31,12 @@
 ## Data model summary
 - Agent NFT fields (on-chain):
   - agent_id (u64)
-  - metadata_uri (string)
+  - metadata_uri (string, optional pointer for images/branding)
+  - name (string)
+  - description (string)
+  - model (string)
+  - provider (u8 enum: 1=xai, 2=openai, 3=anthropic)
+  - config_hash (vector<u8>, 32-byte SHA-256)
   - usage_fee (u64, USD cents for x402 pricing; converted to MOVE via `X402_USD_PER_MOVE`)
   - owner (address)
   - paused (bool)
@@ -44,10 +49,12 @@
 ## Key flows
 
 ### Mint + configure agent
-1) Owner mints Agent NFT with metadata URI and usage fee
-2) Owner sets API key via backend
-3) Backend encrypts key using AES-256-GCM with derived key
-4) Owner sets key_status on-chain to KEY_SET
+1) Owner defines the agent config (system prompt, temperature, max tokens)
+2) Client computes `config_hash` and mints Agent NFT with on-chain metadata + `config_hash`
+3) Owner stores config via `/agents/:id/config` (encrypted at rest)
+4) Owner sets API key via backend
+5) Backend encrypts key using AES-256-GCM with derived key
+6) Owner sets key_status on-chain to KEY_SET
 
 ### List and buy agent
 1) Owner lists agent via Marketplace
@@ -61,15 +68,20 @@
 3) Backend verifies x402 payment
 4) Backend reads agent state and owner from chain
 5) Backend checks: not paused and key_status == KEY_SET
-6) Backend decrypts owner API key and calls AI provider
-7) Backend encrypts response to user's public key
-8) Backend records usage on-chain via FeeManager
-9) Backend returns encrypted response payload
+6) Backend verifies `config_hash` matches stored config
+7) Backend decrypts owner API key and calls AI provider
+8) Backend encrypts response to user's public key
+9) Backend records usage on-chain via FeeManager
+10) Backend returns encrypted response payload
 
 ## Cryptography
 - Owner API key storage:
   - AES-256-GCM
   - Key derived from server secret + owner address + agent_id (HKDF-SHA256)
+  - Stored in SQLite (ciphertext + iv + auth tag)
+- Agent config storage:
+  - AES-256-GCM
+  - Key derived from server secret + agent_id (HKDF-SHA256)
   - Stored in SQLite (ciphertext + iv + auth tag)
 - User responses:
   - X25519 ECDH between server ephemeral key and user public key

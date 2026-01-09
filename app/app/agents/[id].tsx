@@ -34,9 +34,14 @@ export default function AgentDetailScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {agent ? (
           <View style={styles.card}>
-            <Text style={styles.title}>Agent #{agent.agent_id}</Text>
+            <Text style={styles.title}>
+              {agent.name ? `${agent.name} (#${agent.agent_id})` : `Agent #${agent.agent_id}`}
+            </Text>
+            {agent.description ? <Text style={styles.meta}>{agent.description}</Text> : null}
             <Text style={styles.meta}>Owner: {agent.owner}</Text>
             <Text style={styles.meta}>Metadata: {agent.metadata_uri}</Text>
+            <Text style={styles.meta}>Model: {agent.model}</Text>
+            <Text style={styles.meta}>Provider: {agent.provider}</Text>
             <Text style={styles.meta}>Fee (cents): {agent.usage_fee}</Text>
             <Text style={styles.meta}>Paused: {String(agent.paused)}</Text>
             <Text style={styles.meta}>Key status: {agent.key_status}</Text>

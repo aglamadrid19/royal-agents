@@ -33,6 +33,7 @@ Set the following in `.env`:
 - `MOVE_PACKAGE_ADDRESS=0xDEPLOYER`
 - `MOVEMENT_RPC_URL=<movement testnet fullnode>`
 - `MOVEMENT_FEE_MANAGER_PRIVATE_KEY=<private key for deployer>`
+- `API_KEY_ENC_SECRET=<32-byte base64 or hex secret>`
 
 Start backend:
 ```bash

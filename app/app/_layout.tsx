@@ -31,6 +31,8 @@ export default function RootLayout() {
         <Stack.Screen name="agents/[id]" options={{ title: "Agent Detail" }} />
         <Stack.Screen name="use-agent" options={{ title: "Use Agent" }} />
         <Stack.Screen name="my-agents" options={{ title: "My Agents" }} />
+        <Stack.Screen name="create-agent" options={{ title: "Create Agent" }} />
+        <Stack.Screen name="agent-config" options={{ title: "Agent Config" }} />
         <Stack.Screen name="set-key" options={{ title: "Set API Key" }} />
         <Stack.Screen name="marketplace" options={{ title: "Marketplace" }} />
       </Stack>

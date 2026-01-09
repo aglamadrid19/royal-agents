@@ -32,8 +32,12 @@ function centsToMoveOctas(cents: number): string {
   return String(octas);
 }
 
+function isMovementNetwork(network: string): boolean {
+  return network === "movement" || network.startsWith("movement-");
+}
+
 function resolvePayTo(db: Db, agentId: number, agentOwner: string): string {
-  if (config.x402.network === "movement") {
+  if (isMovementNetwork(config.x402.network)) {
     return agentOwner;
   }
   const record = getAgentKey(db, agentId);
