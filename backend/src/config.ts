@@ -15,8 +15,6 @@ const envSchema = z.object({
   X402_PAY_TO_ADDRESS: z.string().optional(),
   X402_ENABLED: z.string().optional(),
   X402_ASSET: z.string().optional(),
-  X402_USD_PER_MOVE: z.string().optional(),
-  X402_MOVE_DECIMALS: z.string().optional(),
   X402_MAX_TIMEOUT_SECONDS: z.string().optional(),
   OPENAI_DEFAULT_MODEL: z.string().optional(),
   ANTHROPIC_DEFAULT_MODEL: z.string().optional(),
@@ -46,8 +44,6 @@ export const config = {
     facilitatorUrl: env.X402_FACILITATOR_URL || "https://facilitator.stableyard.fi",
     payToAddress: env.X402_PAY_TO_ADDRESS || "",
     asset: env.X402_ASSET || "0x1::aptos_coin::AptosCoin",
-    usdPerMove: toNumber(env.X402_USD_PER_MOVE, 1),
-    moveDecimals: toNumber(env.X402_MOVE_DECIMALS, 8),
     maxTimeoutSeconds: toNumber(env.X402_MAX_TIMEOUT_SECONDS, 600)
   },
   ai: {

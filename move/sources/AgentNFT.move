@@ -22,12 +22,17 @@ module royal_agents::agent_nft {
     const E_ALREADY_INITIALIZED: u64 = 7;
     const E_INVALID_PROVIDER: u64 = 8;
     const E_INVALID_CONFIG_HASH: u64 = 9;
+    const E_INVALID_AGENT_TYPE: u64 = 10;
+    const E_INVALID_TOOL_CONFIG: u64 = 11;
 
     const KEY_MISSING: u8 = 0;
     const KEY_SET: u8 = 1;
+    const PROVIDER_NONE: u8 = 0;
     const PROVIDER_XAI: u8 = 1;
     const PROVIDER_OPENAI: u8 = 2;
     const PROVIDER_ANTHROPIC: u8 = 3;
+    const AGENT_TYPE_HOSTED: u8 = 1;
+    const AGENT_TYPE_RUNNER: u8 = 2;
     const CONFIG_HASH_LEN: u64 = 32;
 
     const COLLECTION_URI_BYTES: vector<u8> = b"https://royalagents.example/collection";
@@ -40,8 +45,11 @@ module royal_agents::agent_nft {
         description: String,
         model: String,
         provider: u8,
+        agent_type: u8,
         config_hash: vector<u8>,
         usage_fee: u64,
+        tool_fee: u64,
+        tool_cap: u64,
         owner: address,
         paused: bool,
         key_status: u8,
@@ -100,8 +108,11 @@ module royal_agents::agent_nft {
         description: String,
         model: String,
         provider: u8,
+        agent_type: u8,
         config_hash: vector<u8>,
         usage_fee: u64,
+        tool_fee: u64,
+        tool_cap: u64,
         owner: address,
         paused: bool,
         key_status: u8,
@@ -130,15 +141,28 @@ module royal_agents::agent_nft {
         description: String,
         model: String,
         provider: u8,
+        agent_type: u8,
         config_hash: vector<u8>,
-        usage_fee: u64
+        usage_fee: u64,
+        tool_fee: u64,
+        tool_cap: u64
     )
     acquires AgentRegistry, AgentEvents, OwnerCaps {
         assert!(exists<AgentRegistry>(@royal_agents), E_NOT_INITIALIZED);
         assert!(
-            provider == PROVIDER_XAI || provider == PROVIDER_OPENAI || provider == PROVIDER_ANTHROPIC,
-            E_INVALID_PROVIDER
+            agent_type == AGENT_TYPE_HOSTED || agent_type == AGENT_TYPE_RUNNER,
+            E_INVALID_AGENT_TYPE
         );
+        if (agent_type == AGENT_TYPE_HOSTED) {
+            assert!(
+                provider == PROVIDER_XAI || provider == PROVIDER_OPENAI || provider == PROVIDER_ANTHROPIC,
+                E_INVALID_PROVIDER
+            );
+            assert!(tool_fee == 0 && tool_cap == 0, E_INVALID_TOOL_CONFIG);
+        } else {
+            assert!(provider == PROVIDER_NONE, E_INVALID_PROVIDER);
+            assert!(tool_fee > 0 && tool_cap > 0, E_INVALID_TOOL_CONFIG);
+        };
         assert!(vector::length(&config_hash) == CONFIG_HASH_LEN, E_INVALID_CONFIG_HASH);
         let registry = borrow_global_mut<AgentRegistry>(@royal_agents);
         let agent_id = registry.next_id;
@@ -172,8 +196,11 @@ module royal_agents::agent_nft {
                 description,
                 model,
                 provider,
+                agent_type,
                 config_hash,
                 usage_fee,
+                tool_fee,
+                tool_cap,
                 owner: owner_addr,
                 paused: false,
                 key_status: KEY_MISSING,
@@ -238,8 +265,11 @@ module royal_agents::agent_nft {
             description: *&agent.description,
             model: *&agent.model,
             provider: agent.provider,
+            agent_type: agent.agent_type,
             config_hash: *&agent.config_hash,
             usage_fee: agent.usage_fee,
+            tool_fee: agent.tool_fee,
+            tool_cap: agent.tool_cap,
             owner: agent.owner,
             paused: agent.paused,
             key_status: agent.key_status,
@@ -314,6 +344,39 @@ module royal_agents::agent_nft {
     #[view]
     public fun provider_anthropic(): u8 {
         PROVIDER_ANTHROPIC
+    }
+
+    #[view]
+    public fun provider_none(): u8 {
+        PROVIDER_NONE
+    }
+
+    #[view]
+    public fun agent_type(agent_id: u64): u8 acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        agent.agent_type
+    }
+
+    #[view]
+    public fun agent_type_hosted(): u8 {
+        AGENT_TYPE_HOSTED
+    }
+
+    #[view]
+    public fun agent_type_runner(): u8 {
+        AGENT_TYPE_RUNNER
+    }
+
+    #[view]
+    public fun tool_fee(agent_id: u64): u64 acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        agent.tool_fee
+    }
+
+    #[view]
+    public fun tool_cap(agent_id: u64): u64 acquires AgentRegistry, Agent {
+        let agent = borrow_global<Agent>(agent_address(agent_id));
+        agent.tool_cap
     }
 
     #[view]

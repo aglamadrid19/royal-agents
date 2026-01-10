@@ -9,9 +9,9 @@ import {
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { usePrivy } from "@privy-io/expo";
+import { usePrivy } from "@/src/privy";
 import { useMovementWallet } from "../hooks/useMovement";
-import { useCreateWallet } from "@privy-io/expo/extended-chains";
+import { useCreateWallet } from "@/src/privyExtendedChains";
 import { Link } from "expo-router";
 
 export const MovementWalletPortfolio = () => {
@@ -173,6 +173,8 @@ export const MovementWalletPortfolio = () => {
       </View>
     );
   }
+
+
 
   if (movementWallets.length === 0) {
     return (

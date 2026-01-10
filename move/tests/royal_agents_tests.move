@@ -34,7 +34,20 @@ module royal_agents::royal_agents_tests {
         let model = string::utf8(b"grok-4-1-fast-reasoning");
         let provider = agent_nft::provider_xai();
         let config_hash = sample_hash();
-        agent_nft::mint_agent(&alice, metadata, name, description, model, provider, config_hash, 100);
+        let agent_type = agent_nft::agent_type_hosted();
+        agent_nft::mint_agent(
+            &alice,
+            metadata,
+            name,
+            description,
+            model,
+            provider,
+            agent_type,
+            config_hash,
+            100,
+            0,
+            0
+        );
         let agent_id = agent_nft::agent_count() - 1;
 
         assert!(agent_nft::owner_of(agent_id) == signer::address_of(&alice), 100);
@@ -61,7 +74,20 @@ module royal_agents::royal_agents_tests {
         let model = string::utf8(b"grok-4-1-fast-reasoning");
         let provider = agent_nft::provider_xai();
         let config_hash = sample_hash();
-        agent_nft::mint_agent(&alice, metadata, name, description, model, provider, config_hash, 100);
+        let agent_type = agent_nft::agent_type_hosted();
+        agent_nft::mint_agent(
+            &alice,
+            metadata,
+            name,
+            description,
+            model,
+            provider,
+            agent_type,
+            config_hash,
+            100,
+            0,
+            0
+        );
         let agent_id = agent_nft::agent_count() - 1;
         marketplace::list(&alice, agent_id, 1_000);
     }
@@ -87,7 +113,20 @@ module royal_agents::royal_agents_tests {
         let model = string::utf8(b"grok-4-1-fast-reasoning");
         let provider = agent_nft::provider_xai();
         let config_hash = sample_hash();
-        agent_nft::mint_agent(&alice, metadata, name, description, model, provider, config_hash, 100);
+        let agent_type = agent_nft::agent_type_hosted();
+        agent_nft::mint_agent(
+            &alice,
+            metadata,
+            name,
+            description,
+            model,
+            provider,
+            agent_type,
+            config_hash,
+            100,
+            0,
+            0
+        );
         let agent_id = agent_nft::agent_count() - 1;
         agent_nft::set_key_status(&alice, agent_id, agent_nft::key_set());
 
@@ -105,8 +144,100 @@ module royal_agents::royal_agents_tests {
     #[expected_failure(abort_code = 2, location = royal_agents::fee_manager)]
     fun test_usage_duplicate_rejected() {
         let admin = account::create_account_for_test(@royal_agents);
-        fee_manager::init(&admin);
-        fee_manager::record_usage(&admin, 1, @0xB, 100, 4242);
-        fee_manager::record_usage(&admin, 1, @0xB, 100, 4242);
+        let platform = account::create_account_for_test(@0xA);
+        let payer = account::create_account_for_test(@0xB);
+        let owner = account::create_account_for_test(@0xC);
+        let aptos_framework = account::create_account_for_test(@aptos_framework);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&aptos_framework);
+        coin::register<AptosCoin>(&admin);
+        coin::register<AptosCoin>(&platform);
+        coin::register<AptosCoin>(&payer);
+        coin::register<AptosCoin>(&owner);
+        coin::deposit<AptosCoin>(signer::address_of(&admin), coin::mint(1_000_000, &mint_cap));
+
+        fee_manager::init(&admin, signer::address_of(&platform), 500);
+        fee_manager::settle_usage(
+            &admin,
+            1,
+            signer::address_of(&payer),
+            signer::address_of(&owner),
+            1_000,
+            500,
+            4242
+        );
+        fee_manager::settle_usage(
+            &admin,
+            1,
+            signer::address_of(&payer),
+            signer::address_of(&owner),
+            1_000,
+            500,
+            4242
+        );
+
+        coin::destroy_mint_cap(mint_cap);
+        coin::destroy_burn_cap(burn_cap);
+    }
+
+    #[test]
+    fun test_settle_usage_refunds_and_splits() {
+        let admin = account::create_account_for_test(@royal_agents);
+        let platform = account::create_account_for_test(@0xA);
+        let payer = account::create_account_for_test(@0xB);
+        let owner = account::create_account_for_test(@0xC);
+        let aptos_framework = account::create_account_for_test(@aptos_framework);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&aptos_framework);
+        coin::register<AptosCoin>(&admin);
+        coin::register<AptosCoin>(&platform);
+        coin::register<AptosCoin>(&payer);
+        coin::register<AptosCoin>(&owner);
+        coin::deposit<AptosCoin>(signer::address_of(&admin), coin::mint(10_000, &mint_cap));
+
+        fee_manager::init(&admin, signer::address_of(&platform), 500);
+        fee_manager::settle_usage(
+            &admin,
+            1,
+            signer::address_of(&payer),
+            signer::address_of(&owner),
+            1_000,
+            600,
+            777
+        );
+
+        assert!(coin::balance<AptosCoin>(signer::address_of(&owner)) == 570, 300);
+        assert!(coin::balance<AptosCoin>(signer::address_of(&platform)) == 30, 301);
+        assert!(coin::balance<AptosCoin>(signer::address_of(&payer)) == 400, 302);
+
+        coin::destroy_mint_cap(mint_cap);
+        coin::destroy_burn_cap(burn_cap);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 11, location = royal_agents::agent_nft)]
+    fun test_runner_requires_tool_config() {
+        let admin = account::create_account_for_test(@royal_agents);
+        agent_nft::init(&admin);
+
+        let alice = account::create_account_for_test(@0xB);
+        let metadata = string::utf8(b"ipfs://agent-metadata");
+        let name = string::utf8(b"LogoRunner");
+        let description = string::utf8(b"Runner agent");
+        let model = string::utf8(b"logo-runner-v1");
+        let provider = agent_nft::provider_none();
+        let config_hash = sample_hash();
+        let agent_type = agent_nft::agent_type_runner();
+        agent_nft::mint_agent(
+            &alice,
+            metadata,
+            name,
+            description,
+            model,
+            provider,
+            agent_type,
+            config_hash,
+            100,
+            0,
+            1
+        );
     }
 }

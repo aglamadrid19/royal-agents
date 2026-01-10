@@ -1,4 +1,4 @@
-import { useLogin } from "@privy-io/expo/ui";
+import { useLogin } from "@/src/privy";
 import {
   View,
   Text,
@@ -65,26 +65,35 @@ export default function PrivyUI() {
   const handleLogin = () => {
     setError("");
     setIsLoading(true);
-
-    login({
-      loginMethods: [
-        "email",
-        "twitter",
-        "tiktok",
-        "google",
-        "apple",
-        "github",
-        "discord",
-        "linkedin",
-      ],
-    })
-      .then(() => {
-        setIsLoading(false);
-      })
-      .catch(err => {
-        setError(err.error?.message || "Failed to login. Please try again.");
-        setIsLoading(false);
+    try {
+      const result = login({
+        loginMethods: [
+          "email",
+          "twitter",
+          "tiktok",
+          "google",
+          "apple",
+          "github",
+          "discord",
+          "linkedin",
+        ],
       });
+      if (result && typeof (result as Promise<unknown>).then === "function") {
+        (result as Promise<unknown>)
+          .then(() => {
+            setIsLoading(false);
+          })
+          .catch(err => {
+            setError(err.error?.message || "Failed to login. Please try again.");
+            setIsLoading(false);
+          });
+        return;
+      }
+      setIsLoading(false);
+    } catch (err: any) {
+      setError(err?.error?.message || err?.message || "Failed to login. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   const rotate = rotateAnim.interpolate({

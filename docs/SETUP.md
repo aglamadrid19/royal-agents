@@ -30,7 +30,7 @@ rm -rf backend/royal_agents.db*
 Create a new deployer with Movement CLI (Testnet)
 ```bash
 cd move
-movement init --network testnet \
+movement init --network custom \
   --rest-url https://testnet.movementnetwork.xyz/v1 \
   --faucet-url https://faucet.testnet.movementnetwork.xyz
 ```
@@ -64,8 +64,10 @@ movement move run \
 movement move run \
   --function-id 0xDEPLOYER::marketplace::init
 movement move run \
-  --function-id 0xDEPLOYER::fee_manager::init
+  --function-id 0xDEPLOYER::fee_manager::init \
+  --args address:0xPLATFORM_WALLET u64:500
 ```
+`fee_manager::init` stores the treasury config on-chain. `fee_bps=500` = 5%.
 
 ## 2) Backend
 ```bash
@@ -78,16 +80,17 @@ npm run dev
 
 Notes:
 - `API_KEY_ENC_SECRET` is used to encrypt both owner API keys and agent configs at rest.
+- `MOVEMENT_FEE_MANAGER_PRIVATE_KEY` should be the deployer/treasury account used by FeeManager.
 - Type 1 agents require a config hash; the app computes this automatically. For CLI usage, see `docs/DEMO.md`.
 
 x402 (Movement) settings to fill in `.env`:
 - `X402_NETWORK=movement-testnet` (use `movement` for mainnet)
 - `X402_FACILITATOR_URL=https://facilitator.stableyard.fi`
 - `X402_ASSET=0x1::aptos_coin::AptosCoin`
-- `X402_PAY_TO_ADDRESS=0x<movement address>` (fallback only for non-Movement networks)
-- `X402_USD_PER_MOVE=1` (conversion rate used to map USD cents to MOVE amount)
-- `X402_MOVE_DECIMALS=8` (decimals for the asset; Aptos/MOVE defaults to 8)
+- `X402_PAY_TO_ADDRESS=0x<address>` (fallback only for non-Movement networks)
 - `X402_MAX_TIMEOUT_SECONDS=600` (max time the facilitator will accept the payment)
+For Movement networks, `payTo` is always the package address (treasury) so FeeManager can split + refund.
+Fees are stored on-chain in MOVE octas (1 MOVE = 1e8).
 
 ## 3) Movement Expo backend
 ```bash
@@ -99,7 +102,18 @@ npm run start
 ```
 The network (testnet vs mainnet) is controlled by `MOVEMENT_FULLNODE_URL` in `expo-backend/.env`.
 
-## 4) App (Expo)
+## 4) Runner (Type 2 agents)
+```bash
+cd runner
+cp .env.example .env
+# set RUNNER_SECRET and keep it private
+npm install
+npm run start
+```
+Type 2 agents need a runner URL + secret stored via `/agents/:id/runner`.
+The runner spawns a local MCP tool server by default (`src/mcp-logo-server.js`).
+
+## 5) App (Expo)
 ```bash
 cd app
 npm install
@@ -117,10 +131,13 @@ Privy dashboard checklist:
 - Add URL Schemes: `exp` and your custom scheme (e.g., `royalagents`)
 - If using passkeys, set `passkeyAssociatedDomain` and iOS `associatedDomains`
 
-## Agent config (Type 1)
-After minting a Type 1 agent, store the private config via:
+## Agent config (Type 1 + Type 2)
+After minting an agent, store the private config via:
 - `POST /agents/:id/config` (owner-signed nonce)
 - The backend verifies the on-chain `config_hash` before accepting the config
+Type 2 agents also require:
+- `POST /agents/:id/runner` (owner-signed nonce)
+Type 2 configs include `tool_name` (defaults to `generate_logo_svg`).
 
 ## Deterministic configuration
 - Use fixed package address in `move/Move.toml` when testing locally

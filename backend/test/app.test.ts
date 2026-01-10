@@ -14,8 +14,11 @@ const stubChain = {
       description: "Scientific researcher agent",
       model: "grok-4-1-fast-reasoning",
       provider: 1,
+      agent_type: 1,
       config_hash: "00".repeat(32),
       usage_fee: 100,
+      tool_fee: 0,
+      tool_cap: 0,
       owner: "0x" + "a".repeat(64),
       paused: false,
       key_status: 1,
@@ -25,7 +28,7 @@ const stubChain = {
   async getAgentCount() {
     return 1;
   },
-  async recordUsage() {
+  async settleUsage() {
     return;
   },
 };

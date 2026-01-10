@@ -2,6 +2,7 @@
 
 ## Assets
 - Owner API keys (encrypted at rest)
+- Runner secrets + URLs (encrypted at rest)
 - User prompts and results
 - Usage revenue and protocol fees
 - NFT ownership and agent configuration
@@ -17,6 +18,7 @@
 - User device <-> Movement expo-backend (HTTP)
 - Backend <-> Movement chain (RPC)
 - Backend <-> AI providers
+- Backend <-> Runner (owner infrastructure)
 - App <-> Wallet (signing, key storage)
 
 ## Threats and mitigations
@@ -40,7 +42,7 @@
 ### T4: Usage without payment
 - x402 verification before inference
 - On-chain agent availability enforced (paused/key_status)
-- Usage recorded on-chain with request hash to detect duplicates
+- FeeManager settlement with request hash to detect duplicates
 
 ### T5: Config mismatch or tampering
 - `config_hash` stored on-chain and immutable after mint
@@ -60,11 +62,16 @@
 - Strict prompt templating and separation of system/user
 - Provider key never included in prompt
 
-### T9: Compromised client device
+### T9: Malicious or compromised runner
+- Runner gated by shared secret
+- Backend enforces `tool_budget` and rejects `tool_calls` over budget
+- Settlement uses max/actual amounts with refunds
+
+### T10: Compromised client device
 - User is responsible for device security
 - No recovery of decrypted results if device is compromised
 
-### T10: Movement expo-backend misbehavior
+### T11: Movement expo-backend misbehavior
 - Treat expo-backend as untrusted; responses are validated by the chain
 - Signatures are produced by the wallet; backend cannot forge user signatures
 
@@ -73,3 +80,4 @@
 - Chain RPC availability and correctness
 - Expo-backend availability for transaction building
 - Client-side wallet integrations are still evolving (Privy + Expo)
+- Runner uptime and correctness (owner infrastructure)

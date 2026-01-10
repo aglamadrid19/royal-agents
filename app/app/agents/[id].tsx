@@ -2,6 +2,7 @@ import { Link, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { fetchAgent } from "@/src/lib/api";
+import { formatMoveAmount } from "@/src/lib/move";
 
 export default function AgentDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -42,7 +43,18 @@ export default function AgentDetailScreen() {
             <Text style={styles.meta}>Metadata: {agent.metadata_uri}</Text>
             <Text style={styles.meta}>Model: {agent.model}</Text>
             <Text style={styles.meta}>Provider: {agent.provider}</Text>
-            <Text style={styles.meta}>Fee (cents): {agent.usage_fee}</Text>
+            <Text style={styles.meta}>
+              Type: {agent.agent_type === 2 ? "Runner" : "Hosted"}
+            </Text>
+            <Text style={styles.meta}>Base Fee: {formatMoveAmount(agent.usage_fee)} MOVE</Text>
+            {agent.agent_type === 2 ? (
+              <>
+                <Text style={styles.meta}>
+                  Tool Fee: {formatMoveAmount(agent.tool_fee)} MOVE
+                </Text>
+                <Text style={styles.meta}>Tool Cap: {agent.tool_cap}</Text>
+              </>
+            ) : null}
             <Text style={styles.meta}>Paused: {String(agent.paused)}</Text>
             <Text style={styles.meta}>Key status: {agent.key_status}</Text>
             <Link href={`/use-agent?agentId=${agent.agent_id}`} style={styles.link}>

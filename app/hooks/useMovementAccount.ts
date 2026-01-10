@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePrivy } from "@privy-io/expo";
-import { useCreateWallet } from "@privy-io/expo/extended-chains";
+import { Platform } from "react-native";
+import { usePrivy } from "@/src/privy";
+import { useCreateWallet } from "@/src/privyExtendedChains";
 
 export type MovementWallet = {
   address: string;
@@ -25,10 +26,15 @@ export function useMovementAccount() {
 
   useEffect(() => {
     const ensureWallet = async () => {
+      if (Platform.OS === "web") {
+        return;
+      }
       if (user && movementWallets.length === 0 && !isCreatingWallet) {
         setIsCreatingWallet(true);
         try {
           await createWallet({ chainType: "aptos" });
+        } catch (error) {
+          console.warn("Failed to create Movement wallet:", error);
         } finally {
           setIsCreatingWallet(false);
         }

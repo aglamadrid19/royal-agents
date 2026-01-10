@@ -33,7 +33,7 @@
       "privyClientId": "client-WY6UFs6MfaSSSmoF4XVApJVao3CSNpzyrCTx9ioF6mRzx",
       "backendUrl": "http://10.0.0.29:4020",
       "movementBackendUrl": "http://10.0.0.29:3000",
-      "movePackageAddress": "0x724d559517363aeeeccd0a7018960a10aa8d346fb0a332dd4be53b3da5937540"
+      "movePackageAddress": "0xe0e83d0f83cf7b7f7e3dd8e39dd3c4cfbbc48be25853c49f8ec32faf0acae9e1"
     },
     "plugins": [
       "expo-router",
@@ -50,7 +50,6 @@
         }
       ],
       "expo-font",
-      "expo-web-browser",
       "./plugins/strip-ios-entitlements"
     ],
     "experiments": {

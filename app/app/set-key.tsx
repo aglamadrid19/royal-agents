@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -10,13 +10,15 @@ import {
   View,
 } from "react-native";
 import Constants from "expo-constants";
-import { requestNonce, setAgentKey } from "@/src/lib/api";
+import { fetchAgent, requestNonce, setAgentKey, setAgentRunner } from "@/src/lib/api";
 import { useMovementAccount } from "@/hooks/useMovementAccount";
 import { useMovementWallet } from "@/hooks/useMovement";
-import { useSignRawHash } from "@privy-io/expo/extended-chains";
+import { useSignRawHash } from "@/src/privyExtendedChains";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex } from "@noble/hashes/utils";
 import { useLocalSearchParams, useRouter } from "expo-router";
+
+const AGENT_TYPE_RUNNER = 2;
 
 export default function SetKeyScreen() {
   const params = useLocalSearchParams();
@@ -25,8 +27,11 @@ export default function SetKeyScreen() {
   const { signAndSubmitTransaction } = useMovementWallet();
   const { signRawHash } = useSignRawHash();
   const [agentId, setAgentId] = useState(String(params.agentId || ""));
+  const [agentType, setAgentType] = useState<number | null>(null);
   const [provider, setProvider] = useState<"openai" | "anthropic" | "xai">("xai");
   const [apiKey, setApiKey] = useState("");
+  const [runnerUrl, setRunnerUrl] = useState("");
+  const [runnerSecret, setRunnerSecret] = useState("");
   const [payoutAddress, setPayoutAddress] = useState("");
   const [nonce, setNonce] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +39,24 @@ export default function SetKeyScreen() {
   const [keyStored, setKeyStored] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const packageAddress = (Constants.expoConfig?.extra?.movePackageAddress as string) || "";
+
+  useEffect(() => {
+    const load = async () => {
+      const parsedId = Number(agentId);
+      if (!Number.isFinite(parsedId)) {
+        return;
+      }
+      try {
+        const data = await fetchAgent(parsedId);
+        setAgentType(Number(data.agent_type));
+      } catch (err: any) {
+        setStatus(err.message || "Failed to load agent info.");
+      }
+    };
+    if (agentId) {
+      load();
+    }
+  }, [agentId]);
 
   const request = async () => {
     setLoading(true);
@@ -72,17 +95,35 @@ export default function SetKeyScreen() {
         chainType: "aptos",
         hash: hashHex,
       });
-      await setAgentKey({
-        agentId: Number(agentId),
-        address: activeWallet.address,
-        publicKey: activeWallet.public_key,
-        signature,
-        nonce,
-        provider,
-        apiKey,
-        payoutAddress: payoutAddress || undefined,
-        signatureFormat: "hash",
-      });
+      const parsedAgentId = Number(agentId);
+      if (agentType === AGENT_TYPE_RUNNER) {
+        if (!runnerUrl.trim() || !runnerSecret.trim()) {
+          setStatus("Runner URL and secret are required.");
+          return;
+        }
+        await setAgentRunner({
+          agentId: parsedAgentId,
+          address: activeWallet.address,
+          publicKey: activeWallet.public_key,
+          signature,
+          nonce,
+          runnerUrl,
+          runnerSecret,
+          signatureFormat: "hash",
+        });
+      } else {
+        await setAgentKey({
+          agentId: parsedAgentId,
+          address: activeWallet.address,
+          publicKey: activeWallet.public_key,
+          signature,
+          nonce,
+          provider,
+          apiKey,
+          payoutAddress: payoutAddress || undefined,
+          signatureFormat: "hash",
+        });
+      }
       setKeyStored(true);
       setStatus("Key stored. Now set key_status on-chain.");
     } catch (err: any) {
@@ -128,7 +169,11 @@ export default function SetKeyScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Set / Update API Key</Text>
+        <Text style={styles.title}>
+          {agentType === AGENT_TYPE_RUNNER
+            ? "Set Runner Credentials"
+            : "Set / Update API Key"}
+        </Text>
         <Text style={styles.label}>Agent ID</Text>
         <TextInput
           value={agentId}
@@ -144,43 +189,67 @@ export default function SetKeyScreen() {
         {isCreatingWallet ? (
           <Text style={styles.note}>Creating your Movement wallet...</Text>
         ) : null}
-        <Text style={styles.label}>Provider</Text>
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={[styles.toggle, provider === "openai" && styles.toggleActive]}
-            onPress={() => setProvider("openai")}
-          >
-            <Text style={styles.toggleText}>OpenAI</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggle, provider === "anthropic" && styles.toggleActive]}
-            onPress={() => setProvider("anthropic")}
-          >
-            <Text style={styles.toggleText}>Anthropic</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggle, provider === "xai" && styles.toggleActive]}
-            onPress={() => setProvider("xai")}
-          >
-            <Text style={styles.toggleText}>xAI</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.label}>API Key</Text>
-        <TextInput
-          value={apiKey}
-          onChangeText={setApiKey}
-          placeholder="sk-..."
-          style={styles.input}
-          autoCapitalize="none"
-        />
-        <Text style={styles.label}>Payout Address (Movement, optional)</Text>
-        <TextInput
-          value={payoutAddress}
-          onChangeText={setPayoutAddress}
-          placeholder="0x..."
-          style={styles.input}
-          autoCapitalize="none"
-        />
+        {agentType === AGENT_TYPE_RUNNER ? (
+          <>
+            <Text style={styles.label}>Runner URL</Text>
+            <TextInput
+              value={runnerUrl}
+              onChangeText={setRunnerUrl}
+              placeholder="http://localhost:7350"
+              style={styles.input}
+              autoCapitalize="none"
+            />
+            <Text style={styles.label}>Runner Secret</Text>
+            <TextInput
+              value={runnerSecret}
+              onChangeText={setRunnerSecret}
+              placeholder="shared-secret"
+              style={styles.input}
+              autoCapitalize="none"
+              secureTextEntry
+            />
+          </>
+        ) : (
+          <>
+            <Text style={styles.label}>Provider</Text>
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={[styles.toggle, provider === "openai" && styles.toggleActive]}
+                onPress={() => setProvider("openai")}
+              >
+                <Text style={styles.toggleText}>OpenAI</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggle, provider === "anthropic" && styles.toggleActive]}
+                onPress={() => setProvider("anthropic")}
+              >
+                <Text style={styles.toggleText}>Anthropic</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggle, provider === "xai" && styles.toggleActive]}
+                onPress={() => setProvider("xai")}
+              >
+                <Text style={styles.toggleText}>xAI</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.label}>API Key</Text>
+            <TextInput
+              value={apiKey}
+              onChangeText={setApiKey}
+              placeholder="sk-..."
+              style={styles.input}
+              autoCapitalize="none"
+            />
+            <Text style={styles.label}>Payout Address (Movement, optional)</Text>
+            <TextInput
+              value={payoutAddress}
+              onChangeText={setPayoutAddress}
+              placeholder="0x..."
+              style={styles.input}
+              autoCapitalize="none"
+            />
+          </>
+        )}
         <Text style={styles.label}>Nonce</Text>
         <TextInput value={nonce} editable={false} style={styles.input} />
         <TouchableOpacity style={styles.button} onPress={request} disabled={loading}>

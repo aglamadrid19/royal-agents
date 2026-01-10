@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { fetchAgents } from "@/src/lib/api";
+import { formatMoveAmount } from "@/src/lib/move";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function AgentsScreen() {
@@ -47,7 +48,10 @@ export default function AgentsScreen() {
             ) : null}
             <Text style={styles.meta}>Owner: {agent.owner}</Text>
             <Text style={styles.meta}>Model: {agent.model}</Text>
-            <Text style={styles.meta}>Fee (cents): {agent.usage_fee}</Text>
+            <Text style={styles.meta}>
+              Type: {agent.agent_type === 2 ? "Runner" : "Hosted"}
+            </Text>
+            <Text style={styles.meta}>Base Fee: {formatMoveAmount(agent.usage_fee)} MOVE</Text>
             <Text style={styles.meta}>Paused: {String(agent.paused)}</Text>
             <Text style={styles.meta}>Key status: {agent.key_status}</Text>
           </Link>

@@ -1,15 +1,21 @@
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex } from "@noble/hashes/utils";
 
-export const CONFIG_VERSION = 1;
+export const HOSTED_CONFIG_VERSION = 1;
+export const RUNNER_CONFIG_VERSION = 2;
 
-export type AgentConfigInput = {
+export type HostedAgentConfigInput = {
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
 };
 
-type ConfigHashInput = AgentConfigInput & {
+export type RunnerAgentConfigInput = {
+  systemPrompt: string;
+  toolName: string;
+};
+
+type HostedHashInput = HostedAgentConfigInput & {
   provider: string;
   model: string;
 };
@@ -21,9 +27,9 @@ const normalizeNumber = (value: number) => {
   return String(value);
 };
 
-export function canonicalConfigString(input: ConfigHashInput) {
+export function canonicalHostedConfigString(input: HostedHashInput) {
   return [
-    `version=${CONFIG_VERSION}`,
+    `version=${HOSTED_CONFIG_VERSION}`,
     `provider=${input.provider}`,
     `model=${input.model}`,
     `system_prompt=${input.systemPrompt}`,
@@ -32,8 +38,26 @@ export function canonicalConfigString(input: ConfigHashInput) {
   ].join("\n");
 }
 
-export function hashConfig(input: ConfigHashInput) {
-  const canonical = canonicalConfigString(input);
+export function canonicalRunnerConfigString(input: RunnerAgentConfigInput) {
+  return [
+    `version=${RUNNER_CONFIG_VERSION}`,
+    "agent_type=runner",
+    `tool_name=${input.toolName}`,
+    `system_prompt=${input.systemPrompt}`,
+  ].join("\n");
+}
+
+export function hashHostedConfig(input: HostedHashInput) {
+  const canonical = canonicalHostedConfigString(input);
+  const hash = sha256(new TextEncoder().encode(canonical));
+  return {
+    hashHex: bytesToHex(hash),
+    hashBytes: Array.from(hash),
+  };
+}
+
+export function hashRunnerConfig(input: RunnerAgentConfigInput) {
+  const canonical = canonicalRunnerConfigString(input);
   const hash = sha256(new TextEncoder().encode(canonical));
   return {
     hashHex: bytesToHex(hash),

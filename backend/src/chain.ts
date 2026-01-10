@@ -8,8 +8,11 @@ export type AgentOnChain = {
   description: string;
   model: string;
   provider: number;
+  agent_type: number;
   config_hash: string;
   usage_fee: number;
+  tool_fee: number;
+  tool_cap: number;
   owner: string;
   paused: boolean;
   key_status: number;
@@ -49,8 +52,11 @@ export class ChainClient {
       description: String(agent.description),
       model: String(agent.model),
       provider: Number(agent.provider),
+      agent_type: Number(agent.agent_type),
       config_hash: configHash,
       usage_fee: Number(agent.usage_fee),
+      tool_fee: Number(agent.tool_fee),
+      tool_cap: Number(agent.tool_cap),
       owner: String(agent.owner),
       paused: Boolean(agent.paused),
       key_status: Number(agent.key_status),
@@ -69,19 +75,23 @@ export class ChainClient {
     return Number(result[0]);
   }
 
-  async recordUsage(params: {
+  async settleUsage(params: {
     agentId: number;
     payer: string;
+    owner: string;
+    maxAmount: number;
     amount: number;
     requestHash: bigint;
   }) {
     const transaction = await this.aptos.transaction.build.simple({
       sender: this.feeManagerAccount.accountAddress,
       data: {
-        function: `${this.packageAddress}::fee_manager::record_usage`,
+        function: `${this.packageAddress}::fee_manager::settle_usage`,
         functionArguments: [
           params.agentId,
           params.payer,
+          params.owner,
+          params.maxAmount,
           params.amount,
           params.requestHash,
         ],

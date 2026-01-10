@@ -3,6 +3,7 @@ move/build
 app/node_modules
 expo-backend/node_modules
 backend/node_modules
+runner/node_modules
 backend/royal_agents.db*
 app/android
 app/ios

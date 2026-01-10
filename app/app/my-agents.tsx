@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { fetchAgents } from "@/src/lib/api";
+import { formatMoveAmount } from "@/src/lib/move";
 import { useMovementAccount } from "@/hooks/useMovementAccount";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -45,7 +46,7 @@ export default function MyAgentsScreen() {
             <Text style={styles.cardTitle}>
               {agent.name ? `${agent.name} (#${agent.agent_id})` : `Agent #${agent.agent_id}`}
             </Text>
-            <Text style={styles.meta}>Fee (cents): {agent.usage_fee}</Text>
+            <Text style={styles.meta}>Base Fee: {formatMoveAmount(agent.usage_fee)} MOVE</Text>
           </Link>
         ))}
       </ScrollView>

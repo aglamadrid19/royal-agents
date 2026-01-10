@@ -1,12 +1,15 @@
 import { SafeAreaView, Text, View } from "react-native";
 import Constants from "expo-constants";
 import LoginScreen from "@/components/LoginScreen";
-import { usePrivy } from "@privy-io/expo";
+import { usePrivy } from "@/src/privy";
 import { MovementWalletPortfolio } from "@/components/UserScreen";
 
 export default function Index() {
   const { user } = usePrivy();
-  if ((Constants.expoConfig?.extra?.privyAppId as string).length !== 25) {
+  const privyAppId = Constants.expoConfig?.extra?.privyAppId;
+  const clientId = Constants.expoConfig?.extra?.privyClientId;
+
+  if (!privyAppId || String(privyAppId).length !== 25) {
     return (
       <SafeAreaView>
         <View
@@ -21,9 +24,7 @@ export default function Index() {
       </SafeAreaView>
     );
   }
-  if (
-    !(Constants.expoConfig?.extra?.privyClientId as string).startsWith("client-")
-  ) {
+  if (!clientId || !String(clientId).startsWith("client-")) {
     return (
       <SafeAreaView>
         <View
@@ -33,7 +34,9 @@ export default function Index() {
             justifyContent: "center",
           }}
         >
-          <Text>You have not set a valid `privyClientId` in app.json</Text>
+          <Text>
+            You have not set a valid privyClientId in app.json
+          </Text>
         </View>
       </SafeAreaView>
     );

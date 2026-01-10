@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useSignRawHash } from "@privy-io/expo/extended-chains";
+import { useSignRawHash } from "@/src/privyExtendedChains";
 import Constants from "expo-constants";
 
 const API_BASE_URL =

@@ -66,6 +66,35 @@ export async function setAgentKey(params: {
   return res.json();
 }
 
+export async function setAgentRunner(params: {
+  agentId: number;
+  address: string;
+  publicKey: string;
+  signature: string;
+  nonce: string;
+  runnerUrl: string;
+  runnerSecret: string;
+  signatureFormat?: "message" | "hash";
+}) {
+  const res = await fetch(`${baseUrl}/agents/${params.agentId}/runner`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      address: params.address,
+      public_key: params.publicKey,
+      signature: params.signature,
+      nonce: params.nonce,
+      signature_format: params.signatureFormat,
+      runner_url: params.runnerUrl,
+      runner_secret: params.runnerSecret,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
 export async function setAgentConfig(params: {
   agentId: number;
   address: string;
@@ -75,6 +104,7 @@ export async function setAgentConfig(params: {
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
+  toolName?: string;
   signatureFormat?: "message" | "hash";
 }) {
   const res = await fetch(`${baseUrl}/agents/${params.agentId}/config`, {
@@ -89,6 +119,7 @@ export async function setAgentConfig(params: {
       system_prompt: params.systemPrompt,
       temperature: params.temperature,
       max_tokens: params.maxTokens,
+      tool_name: params.toolName,
     }),
   });
   if (!res.ok) {
@@ -103,6 +134,7 @@ export async function useAgent(params: {
   clientPublicKey: string;
   payerAddress: string;
   paymentHeader?: string;
+  toolBudget?: number;
 }) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -117,6 +149,7 @@ export async function useAgent(params: {
       prompt: params.prompt,
       client_public_key: params.clientPublicKey,
       payer_address: params.payerAddress,
+      tool_budget: params.toolBudget,
     }),
   });
   if (!res.ok) {

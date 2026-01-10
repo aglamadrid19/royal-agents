@@ -1,173 +1,93 @@
-# Demo Script (End-to-End)
+# Demo Script (App-Based Happy Flows)
+
+This demo uses the Expo app for all user/creator actions. The CLI is only used for deployment and optional verification.
 
 ## Prereqs
-- Move package deployed and initialized (see docs/DEPLOYMENT.md)
-- Backend running with `.env` configured
-- Movement wallet for x402 payments
-- Movement CLI installed (commands use `movement`; replace with `aptos` if needed)
+- Complete setup (see docs/SETUP.md)
+- Movement wallet funded (owner + user)
 
-## 1) Mint agent NFT (owner)
-Define the Type 1 config and compute `config_hash` (SHA-256 of the canonical string):
-```bash
-node - <<'JS'
-const crypto = require("crypto");
-const config = {
-  provider: "xai",
-  model: "grok-4-1-fast-reasoning",
-  system_prompt: "You are SciGrok, a specialized scientific researcher.",
-  temperature: 0.2,
-  max_tokens: 512
-};
-const canonical = [
-  "version=1",
-  `provider=${config.provider}`,
-  `model=${config.model}`,
-  `system_prompt=${config.system_prompt}`,
-  `temperature=${config.temperature}`,
-  `max_tokens=${Math.trunc(config.max_tokens)}`
-].join("\\n");
-const hash = crypto.createHash("sha256").update(canonical, "utf8").digest("hex");
-console.log("config_hash =", hash);
-JS
-```
+## Shared notes
+- Fees are MOVE octas (1 MOVE = 1e8).
+- The app computes `config_hash` automatically when minting.
+- After mint, config + credentials are stored off-chain, then `key_status` is set on-chain.
 
-Mint the agent with on-chain metadata and the computed `config_hash`:
-```bash
-movement move run \
-  --function-id 0xDEPLOYER::agent_nft::mint_agent \
-  --args string:ipfs://agent-metadata \
-         string:"SciGrok" \
-         string:"Scientific researcher agent" \
-         string:"grok-4-1-fast-reasoning" \
-         u8:1 \
-         hex:<config_hash_hex> \
-         u64:100
-```
-Use `string:""` for `metadata_uri` if you do not want an external pointer.
-Provider enum: `1 = xai`, `2 = openai`, `3 = anthropic`.
-Output: `agent_id` from events.
+---
 
-## 2) Owner stores config (off-chain, encrypted)
-Request nonce:
-```bash
-curl -s -X POST http://localhost:4020/auth/nonce \
-  -H 'Content-Type: application/json' \
-  -d '{"address":"0xOWNER"}'
-```
-Sign the message `RoyalAgents nonce: <nonce>` with the owner wallet.
+# Type 1 (Hosted) Happy Flow
 
-Submit config (must match the on-chain `config_hash`):
-```bash
-curl -s -X POST http://localhost:4020/agents/0/config \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "address":"0xOWNER",
-    "public_key":"<hex>",
-    "signature":"<hex>",
-    "nonce":"<nonce>",
-    "system_prompt":"You are SciGrok, a specialized scientific researcher.",
-    "temperature":0.2,
-    "max_tokens":512
-  }'
-```
+## Creator route (app)
+1) Open **Create Agent**.
+2) Select **Type 1 (Hosted)**.
+3) Fill:
+   - Name, Description
+   - Model (e.g., `grok-4-1-fast-reasoning`)
+   - Base Fee (MOVE)
+   - Optional Metadata URI
+4) Tap **Next: Configure Agent**.
+5) Enter **System Prompt**, **Temperature**, **Max Tokens**.
+6) Tap **Mint Agent + Save Config**.
+7) On the **Set / Update API Key** screen:
+   - Tap **Request Nonce**
+   - Tap **Submit Key** (provider + API key)
+8) Tap **Set Key Status On-Chain**.
 
-## 3) Owner sets key (off-chain) + key status (on-chain)
-Request nonce:
-```bash
-curl -s -X POST http://localhost:4020/auth/nonce \
-  -H 'Content-Type: application/json' \
-  -d '{"address":"0xOWNER"}'
-```
-Sign the message `RoyalAgents nonce: <nonce>` with the owner wallet.
+## User route (app)
+1) Open **Agent List** and select the agent.
+2) Tap **Use Agent**.
+3) Enter a prompt.
+4) Leave **x402 Payment Header** blank for auto‑pay.
+5) Tap **Pay + Run** and view decrypted response.
 
-Submit key:
-```bash
-curl -s -X POST http://localhost:4020/agents/0/key \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "address":"0xOWNER",
-    "public_key":"<hex>",
-    "signature":"<hex>",
-    "nonce":"<nonce>",
-    "provider":"xai",
-    "api_key":"sk-..."
-  }'
-```
-`payout_address` is optional for Movement x402; if omitted, payments go to the agent owner address.
-Set key status on-chain:
-```bash
-movement move run \
-  --function-id 0xDEPLOYER::agent_nft::set_key_status \
-  --args u64:0 u8:1
-```
+---
 
-## 4) List agent
+# Type 2 (Runner) Happy Flow
+
+## Creator route (app)
+1) Start the runner service (`runner/`). Ensure `RUNNER_SECRET` is set.
+2) Open **Create Agent**.
+3) Select **Type 2 (Runner)**.
+4) Fill:
+   - Name, Description
+   - Model (e.g., `logo-runner-v1`)
+   - Base Fee (MOVE)
+   - Tool Fee (MOVE per call)
+   - Tool Cap (max calls per request)
+5) Tap **Next: Configure Agent**.
+6) Enter **System Prompt** and **Tool Name** (default `generate_logo_svg`).
+7) Tap **Mint Agent + Save Config**.
+8) On **Set Runner Credentials** screen:
+   - Tap **Request Nonce**
+   - Enter **Runner URL** (reachable from backend)
+   - Enter **Runner Secret** (must match `RUNNER_SECRET`)
+   - Tap **Submit Key**
+9) Tap **Set Key Status On-Chain**.
+
+## User route (app)
+1) Open **Agent List** and select the agent.
+2) Tap **Use Agent**.
+3) Enter a prompt.
+4) Set **Tool Budget** (<= Tool Cap).
+5) Leave **x402 Payment Header** blank for auto‑pay.
+6) Tap **Pay + Run** and view decrypted SVG output.
+
+---
+
+# Optional: Ownership transfer (app + CLI)
+
+The app includes listing/buy UI. If you use CLI:
 ```bash
 movement move run \
   --function-id 0xDEPLOYER::marketplace::list \
-  --args u64:0 u64:100000000
-```
+  --args u64:<agent_id> u64:<price_octas>
 
-## 5) Buy agent (buyer)
-```bash
 movement move run \
   --function-id 0xDEPLOYER::marketplace::buy \
-  --args u64:0
+  --args u64:<agent_id>
 ```
-After purchase, key_status is KEY_MISSING.
+After purchase, `key_status` resets to `KEY_MISSING`. The new owner must set API key (Type 1) or runner credentials (Type 2), then set key status on‑chain.
 
-## 6) New owner sets key
-Repeat step 3 with the new owner address, then call `set_key_status`.
+---
 
-## 7) User pays per request (x402) and uses agent
-Use the x402plus Movement signer to pay and call the API:
-```bash
-# from a separate node project
-npm install x402plus @aptos-labs/ts-sdk dotenv
-
-cat > x402-call.js <<'JS'
-import { config } from 'dotenv';
-import { wrapFetchWithPayment, aptosLikeSigner } from 'x402plus';
-import { Aptos, AptosConfig, Account, Ed25519PrivateKey } from '@aptos-labs/ts-sdk';
-config();
-
-const rpc = process.env.MOVEMENT_RPC_URL || 'https://testnet.movementnetwork.xyz/v1';
-const aptos = new Aptos(new AptosConfig({ fullnode: rpc }));
-const account = Account.fromPrivateKey({
-  privateKey: new Ed25519PrivateKey(process.env.MOVEMENT_PRIVATE_KEY)
-});
-
-const signer = aptosLikeSigner(async (accepts) => {
-  const tx = await aptos.transaction.build.simple({
-    sender: account.accountAddress,
-    data: {
-      function: '0x1::aptos_account::transfer',
-      functionArguments: [accepts.payTo, accepts.maxAmountRequired]
-    }
-  });
-  const authenticator = aptos.transaction.sign({ signer: account, transaction: tx });
-  return {
-    signatureBcsBase64: Buffer.from(authenticator.bcsToBytes()).toString('base64'),
-    transactionBcsBase64: Buffer.from(tx.bcsToBytes()).toString('base64')
-  };
-});
-
-const fetchWithPayment = wrapFetchWithPayment(fetch, { signer, prefer: 'exact' });
-const res = await fetchWithPayment('http://localhost:4020/agents/0/use', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    prompt: 'Summarize the agent capabilities.',
-    client_public_key: '<base64 X25519 public key>',
-    payer_address: account.accountAddress.toString()
-  })
-});
-console.log(await res.json());
-JS
-
-MOVEMENT_PRIVATE_KEY=ed25519-priv-... node x402-call.js
-```
-
-## 8) Verify owner revenue
-- x402 payment is sent to the Movement payout address
-- Backend records usage on-chain via FeeManager
+## Verify settlement
+- x402 payment is sent to the treasury (package address)
+- Backend settles on-chain via FeeManager (95% owner / 5% protocol + refunds)

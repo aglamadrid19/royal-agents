@@ -8,6 +8,7 @@ import {
 import { Db, getAgentKey } from "./db";
 import { ChainClient } from "./chain";
 import { config } from "./config";
+import { computeMaxAmount, resolveToolBudget } from "./pricing";
 
 function parseAgentId(path: string): number | null {
   const match = path.match(/\/agents\/(\d+)\/use/i);
@@ -23,22 +24,13 @@ function absoluteResourceUrl(req: Request): string {
   return `${proto}://${host}${req.originalUrl.split("?")[0]}`;
 }
 
-function centsToMoveOctas(cents: number): string {
-  const usd = cents / 100;
-  const usdPerMove = config.x402.usdPerMove;
-  const moveAmount = usdPerMove > 0 ? usd / usdPerMove : 0;
-  const scale = 10 ** config.x402.moveDecimals;
-  const octas = Math.ceil(moveAmount * scale);
-  return String(octas);
-}
-
 function isMovementNetwork(network: string): boolean {
   return network === "movement" || network.startsWith("movement-");
 }
 
 function resolvePayTo(db: Db, agentId: number, agentOwner: string): string {
   if (isMovementNetwork(config.x402.network)) {
-    return agentOwner;
+    return config.movePackageAddress;
   }
   const record = getAgentKey(db, agentId);
   if (record?.payout_address) {
@@ -70,10 +62,17 @@ export function buildPaymentMiddleware(db: Db, chain: ChainClient): RequestHandl
 
     const agent = await chain.getAgent(agentId);
     const payTo = resolvePayTo(db, agentId, agent.owner);
+    let toolBudget = 0;
+    try {
+      toolBudget = resolveToolBudget(agent, req.body?.tool_budget);
+    } catch (error) {
+      return res.status(400).json({ error: "invalid_tool_budget" });
+    }
+    const maxAmount = computeMaxAmount(agent, toolBudget);
     const requirements: PaymentRequirements = {
       scheme: "exact",
       network: config.x402.network,
-      maxAmountRequired: centsToMoveOctas(agent.usage_fee),
+      maxAmountRequired: maxAmount.toString(),
       resource: absoluteResourceUrl(req),
       description: "RoyalAgents pay-per-request",
       mimeType: "application/json",

@@ -18,6 +18,9 @@ export type UsageReceipt = {
   agent_id: number;
   payer_address: string;
   amount: number;
+  max_amount: number;
+  tool_calls: number;
+  status: string;
   request_hash: string;
   created_at: string;
 };
@@ -26,6 +29,17 @@ export type AgentConfigRecord = {
   agent_id: number;
   config_hash: string;
   encrypted_config: string;
+  iv: string;
+  tag: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AgentRunnerRecord = {
+  agent_id: number;
+  owner_address: string;
+  runner_url: string;
+  encrypted_secret: string;
   iv: string;
   tag: string;
   created_at: string;
@@ -52,6 +66,9 @@ export function initDb(path: string): Db {
       agent_id INTEGER NOT NULL,
       payer_address TEXT NOT NULL,
       amount INTEGER NOT NULL,
+      max_amount INTEGER NOT NULL DEFAULT 0,
+      tool_calls INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'settled',
       request_hash TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL
     );
@@ -59,6 +76,16 @@ export function initDb(path: string): Db {
       agent_id INTEGER PRIMARY KEY,
       config_hash TEXT NOT NULL,
       encrypted_config TEXT NOT NULL,
+      iv TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS agent_runners (
+      agent_id INTEGER PRIMARY KEY,
+      owner_address TEXT NOT NULL,
+      runner_url TEXT NOT NULL,
+      encrypted_secret TEXT NOT NULL,
       iv TEXT NOT NULL,
       tag TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -72,7 +99,20 @@ export function initDb(path: string): Db {
       PRIMARY KEY (address, nonce)
     );
   `);
+  ensureColumn(db, "usage_receipts", "max_amount", "INTEGER", "0");
+  ensureColumn(db, "usage_receipts", "tool_calls", "INTEGER", "0");
+  ensureColumn(db, "usage_receipts", "status", "TEXT", "'settled'");
   return db;
+}
+
+function ensureColumn(db: Db, table: string, column: string, type: string, defaultValue: string) {
+  const existing = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((row: any) => row.name === column);
+  if (!existing) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type} NOT NULL DEFAULT ${defaultValue}`);
+  }
 }
 
 export function getAgentKey(db: Db, agentId: number): AgentKeyRecord | undefined {
@@ -119,12 +159,15 @@ export function upsertAgentKey(db: Db, record: Omit<AgentKeyRecord, "created_at"
 export function insertUsageReceipt(db: Db, receipt: Omit<UsageReceipt, "created_at">) {
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO usage_receipts (agent_id, payer_address, amount, request_hash, created_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO usage_receipts (agent_id, payer_address, amount, max_amount, tool_calls, status, request_hash, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     receipt.agent_id,
     receipt.payer_address,
     receipt.amount,
+    receipt.max_amount,
+    receipt.tool_calls,
+    receipt.status,
     receipt.request_hash,
     now
   );
@@ -148,6 +191,48 @@ export function insertAgentConfig(db: Db, record: Omit<AgentConfigRecord, "creat
     record.agent_id,
     record.config_hash,
     record.encrypted_config,
+    record.iv,
+    record.tag,
+    now,
+    now
+  );
+}
+
+export function getAgentRunner(db: Db, agentId: number): AgentRunnerRecord | undefined {
+  const stmt = db.prepare("SELECT * FROM agent_runners WHERE agent_id = ?");
+  return stmt.get(agentId) as AgentRunnerRecord | undefined;
+}
+
+export function upsertAgentRunner(
+  db: Db,
+  record: Omit<AgentRunnerRecord, "created_at" | "updated_at">
+) {
+  const now = new Date().toISOString();
+  const existing = getAgentRunner(db, record.agent_id);
+  if (existing) {
+    db.prepare(
+      `UPDATE agent_runners
+       SET owner_address = ?, runner_url = ?, encrypted_secret = ?, iv = ?, tag = ?, updated_at = ?
+       WHERE agent_id = ?`
+    ).run(
+      record.owner_address,
+      record.runner_url,
+      record.encrypted_secret,
+      record.iv,
+      record.tag,
+      now,
+      record.agent_id
+    );
+    return;
+  }
+  db.prepare(
+    `INSERT INTO agent_runners (agent_id, owner_address, runner_url, encrypted_secret, iv, tag, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    record.agent_id,
+    record.owner_address,
+    record.runner_url,
+    record.encrypted_secret,
     record.iv,
     record.tag,
     now,
